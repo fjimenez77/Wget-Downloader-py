@@ -127,6 +127,11 @@ downloads/
 
 `wget bulk download`, `batch file downloader`, `resume download python`, `sha256 file verification`, `pre-signed S3 URL downloader`, `OVA download tool`, `firmware bulk download`, `download manager CLI`, `wget automation`, `checksum verification tool`, `VPN download tool`, `spreadsheet batch download`, `large file downloader`, `wget resume interrupted download`, `Python download script`
 
+## Contributors
+
+- [@fjimenez77](https://github.com/fjimenez77)
+- [@DevForgeAtlas](https://github.com/DevForgeAtlas)
+
 ## License
 
 MIT
