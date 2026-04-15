@@ -9,26 +9,64 @@ A Python CLI bulk download manager with resume capability, SHA256 checksum verif
  ██║███╗██║██║   ██║██╔══╝     ██║       ██║  ██║██║
  ╚███╔███╔╝╚██████╔╝███████╗   ██║       ██████╔╝███████╗
   ╚══╝╚══╝  ╚═════╝ ╚══════╝   ╚═╝       ╚═════╝ ╚══════╝
+       Bulk Downloader  v2.0  |  Human-like & Resume-capable
 ```
 
-## Features
+---
 
-- **Resume support** -- interrupted downloads pick up where they left off via `wget -c`
-- **SHA256 verification** -- optional per-file checksum validation after download
-- **Download manifest** -- `download_manifest.json` tracks completion status; re-runs skip verified files
-- **User-Agent rotation** -- cycles through real browser UA strings to avoid bot detection
-- **Human-like delays** -- configurable random pauses between downloads (default 4-15s)
-- **VPN guidance** -- built-in IP checker with geolocation + VPN recommendations
-- **Spreadsheet input** -- reads `.xlsx`, `.csv`, or `.tsv` files
-- **Auto file discovery** -- scans current directory for spreadsheets on startup
-- **Graceful interrupts** -- Ctrl+C saves manifest and returns to menu cleanly
-- **Template generator** -- creates blank CSV templates with correct headers
+## Why This Exists
 
-## Requirements
+You get a vendor email with 15 pre-signed S3 download links, each pointing to a multi-gigabyte OVA. You're supposed to `wget -O` each one manually, pray your connection holds, and hope the file isn't corrupt when it lands. If it drops at 90%, you start over.
 
-- **Python 3.7+**
-- **wget** (`brew install wget` on macOS, `sudo apt install wget` on Linux)
-- Python packages: `requests`, `pandas`, `openpyxl` (auto-installed on first run)
+**Not anymore.**
+
+Drop your URLs into a spreadsheet, paste in the vendor's SHA256 checksums, fire up the script, and walk away. It downloads everything in sequence with human-like timing, resumes interrupted transfers automatically, verifies every file against its checksum, and tracks exactly what's done vs. what still needs pulling. If your VPN drops or your laptop sleeps mid-transfer, just re-run -- it picks up right where it left off and skips anything already verified.
+
+---
+
+## Core Capabilities
+
+### Downloads & Resume
+- **True resume support** -- interrupted downloads pick up from the exact byte via `wget -c`. No re-downloading 20 GB because your connection hiccuped at 19.8 GB.
+- **Automatic retry** -- 3 retries per file with 60-second timeout on stalled connections.
+- **Batch processing** -- reads URLs from `.xlsx`, `.csv`, or `.tsv` spreadsheets. One file, dozens of downloads.
+- **Auto file discovery** -- scans your working directory for spreadsheets and lets you pick from a list. No typing paths.
+- **Smart skip on re-run** -- completed + verified files are skipped instantly. Only failed or missing files get retried.
+
+### Integrity & Verification
+- **SHA256 checksum verification** -- paste the vendor's hash into the `sha256` column. After download, the script computes the file's SHA256 and compares. Bit-perfect or flagged.
+- **Download manifest** -- `download_manifest.json` persists in the output folder. Tracks status (`completed`, `failed`, `sha256_mismatch`), file sizes, timestamps, and attempt counts.
+- **Corruption detection** -- if a file downloads but the checksum doesn't match, it's flagged immediately. No deploying a corrupt OVA into production.
+- **Path traversal protection** -- filenames from spreadsheets are sanitized. No `../../etc/passwd` escaping the output folder.
+
+### Privacy & OPSEC
+- **User-Agent rotation** -- cycles through 6 real browser User-Agent strings (Chrome, Firefox, Safari on Windows/macOS/Linux). Server logs see a browser, not `Wget/1.25.0`.
+- **Human-like timing** -- configurable random delays between downloads (default 4-15 seconds). Traffic pattern looks like a person clicking links, not a script hammering an endpoint.
+- **Built-in IP checker** -- option [3] queries your public IP and runs geolocation. Shows country, city, ISP, ASN, and whether it's flagged as a datacenter/VPN IP. Know your exit node before you start.
+- **VPN detection** -- automatically tells you if your current IP looks like a VPN/datacenter or a residential ISP. If it's residential, you get a warning before downloading.
+- **VPN recommendations** -- built-in guide covering Mullvad, ProtonVPN, and IVPN with privacy comparisons, payment anonymity, and setup checklists.
+
+### Operational
+- **Graceful Ctrl+C** -- interrupt mid-download and the manifest saves, a summary prints, and you return to the menu cleanly. No tracebacks, no lost state.
+- **Template generator** -- option [6] creates a blank `.csv` with the correct headers. Fill it in, run it, done.
+- **Status dashboard** -- option [5] reads the manifest and prints a table: what completed, what failed, file sizes, timestamps, and whether the file still exists on disk.
+- **Dependency bootstrap** -- first run auto-installs `requests`, `pandas`, and `openpyxl` if missing. Checks for `wget` on PATH. Zero manual setup.
+
+---
+
+## Menu
+
+```
+  [1]  Download from file          (.xlsx or .csv)
+  [2]  Traffic obfuscation guide   (VPN info & tips)
+  [3]  Check my current public IP
+  [4]  Quick start & help
+  [5]  View download status        (manifest report)
+  [6]  Generate download template  (blank .csv)
+  [0]  Exit
+```
+
+---
 
 ## Quick Start
 
@@ -43,17 +81,13 @@ python3 bulk_downloader.py
 
 On first run, the script checks for dependencies and installs any missing packages automatically.
 
-## Menu
+### Requirements
 
-```
-  [1]  Download from file          (.xlsx or .csv)
-  [2]  Traffic obfuscation guide   (VPN info & tips)
-  [3]  Check my current public IP
-  [4]  Quick start & help
-  [5]  View download status        (manifest report)
-  [6]  Generate download template  (blank .csv)
-  [0]  Exit
-```
+- **Python 3.7+**
+- **wget** (`brew install wget` on macOS, `sudo apt install wget` on Linux)
+- Python packages: `requests`, `pandas`, `openpyxl` (auto-installed on first run)
+
+---
 
 ## Spreadsheet Format
 
@@ -84,44 +118,100 @@ Map it to the CSV:
 1,https://vendor.s3.amazonaws.com/firmware-v2.1.ova?AWSAccessKeyId=...,firmware-v2.1.ova,c1cfa83b7539202b9ac91e6e7cb1fff9005b23c97b1e25d98a1a6d0c38644f2a,
 ```
 
-## How Resume Works
+---
 
-1. Files download to `downloads/<filename_stem>/<filename>`
-2. `wget -c` resumes partial files on re-run
-3. `download_manifest.json` tracks what completed successfully
-4. On re-run, completed + verified files are **skipped instantly**
-5. Failed or interrupted files are **retried automatically**
+## How It Works
 
-## Privacy & VPN
+### Download Flow
 
-The script includes a built-in privacy toolkit:
+```
+Spreadsheet (.xlsx/.csv)
+    │
+    ▼
+┌─────────────────────────────────┐
+│  Load URLs + filenames + SHA256 │
+│  Load manifest (skip completed) │
+└─────────────┬───────────────────┘
+              │
+              ▼
+┌─────────────────────────────────┐
+│  For each file:                 │
+│    ├─ Already verified? → SKIP  │
+│    ├─ wget -c (resume partial)  │
+│    ├─ SHA256 verify (optional)  │
+│    ├─ Update manifest           │
+│    └─ Human-like pause          │
+└─────────────┬───────────────────┘
+              │
+              ▼
+┌─────────────────────────────────┐
+│  Summary: OK / FAIL / SKIP     │
+│  Manifest saved to disk        │
+└─────────────────────────────────┘
+```
 
-- **Option [3]** checks your public IP with geolocation -- confirms VPN is active
-- **Option [2]** provides VPN recommendations (Mullvad, ProtonVPN, IVPN)
-- **User-Agent rotation** hides `wget` identity from server logs
-- **Random delays** between downloads avoid bot-like traffic patterns
+### Resume Across Runs
 
-> The script does NOT hide your IP address. Use a VPN for that.
+1. First run: downloads file, verifies SHA256, marks `completed` in manifest
+2. Connection drops mid-file: partial file stays on disk, manifest shows `failed`
+3. Re-run: completed files skip instantly, partial files resume from last byte
+4. All files done: manifest shows everything `completed + SHA256 verified`
+
+### IP Check & VPN Verification
+
+```
+  ➤  207.244.109.241
+
+  LOCATION & NETWORK
+  ────────────────────────────────────────────────────────────
+    Country : United States
+    Region  : Virginia
+    City    : Manassas
+    ISP     : Leaseweb USA
+    Org     : Proxima Consulting
+    ASN     : AS30633 Leaseweb USA, Inc.
+    Flags   : datacenter/hosting, proxy/VPN detected
+  ────────────────────────────────────────────────────────────
+
+  ✓  This looks like a VPN / datacenter IP — good.
+```
+
+### Status Dashboard
+
+```
+  ✓  📁  firmware-v2.1.ova                    21.3 GB  2026-04-15T12:30
+  ✓  📁  OS-1.8.17.ova                        33.0 GB  2026-04-15T13:05
+  ✗  ⚠️   OS-1.8.12.ova                        31.2 GB  SHA256 mismatch
+  ✗      toolbox-setup.sh                       0.0 B  Never downloaded
+  ────────────────────────────────────────────────────────────
+  Total: 2 completed (54.3 GB), 2 failed, 0 other
+```
+
+---
 
 ## Output Structure
 
 ```
 downloads/
-  download_manifest.json          # completion tracking
+  download_manifest.json          # completion + verification tracking
   firmware-v2.1/
-    firmware-v2.1.ova             # downloaded file
+    firmware-v2.1.ova             # downloaded & verified
   toolbox-setup/
-    toolbox-setup.sh              # downloaded file
+    toolbox-setup.sh              # downloaded & verified
 ```
+
+---
 
 ## Use Cases
 
-- Bulk downloading OVA/OVF virtual machine images from vendor portals
-- Batch firmware downloads with integrity verification
-- Automated file retrieval from pre-signed AWS S3 or GovCloud URLs
-- Large ISO/archive downloads over unstable or VPN connections
-- Downloading files from vendor share links (wget commands) at scale
-- Air-gapped environment file staging with checksum validation
+- **IT / Infrastructure teams** pulling OVA/OVF virtual machine images from vendor portals
+- **Security teams** staging firmware and patch files with integrity verification before deployment
+- **Ops engineers** batch-downloading from pre-signed AWS S3 or GovCloud URLs
+- **Air-gapped environments** where files need to be staged and checksummed before transfer
+- **Anyone** tired of babysitting multi-gigabyte downloads over flaky VPN connections
+- **Compliance workflows** requiring proof of file integrity via SHA256 verification logs
+
+---
 
 ## Keywords
 
