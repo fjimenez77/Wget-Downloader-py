@@ -1,6 +1,6 @@
-# WGET Bulk Downloader
+# WGET Bulk Downloader - Batch File Download Manager with Resume & Checksum Verification
 
-A privacy-aware, resume-capable bulk file downloader built on `wget`. Designed for pulling large vendor files (OVAs, firmware, toolkits) from pre-signed S3 URLs or any HTTP source.
+A Python CLI bulk download manager with resume capability, SHA256 checksum verification, and privacy features. Built on `wget` for downloading large files (OVA images, firmware, ISO, virtual appliances) from pre-signed AWS S3 URLs, Azure Blob Storage, or any HTTP/HTTPS source. Supports batch downloading from spreadsheets (Excel `.xlsx`, `.csv`) with automatic retry, user-agent rotation, and VPN integration.
 
 ```
  ██╗    ██╗ ██████╗ ███████╗████████╗    ██████╗ ██╗
@@ -113,6 +113,19 @@ downloads/
   toolbox-setup/
     toolbox-setup.sh              # downloaded file
 ```
+
+## Use Cases
+
+- Bulk downloading OVA/OVF virtual machine images from vendor portals
+- Batch firmware downloads with integrity verification
+- Automated file retrieval from pre-signed AWS S3 or GovCloud URLs
+- Large ISO/archive downloads over unstable or VPN connections
+- Downloading files from vendor share links (wget commands) at scale
+- Air-gapped environment file staging with checksum validation
+
+## Keywords
+
+`wget bulk download`, `batch file downloader`, `resume download python`, `sha256 file verification`, `pre-signed S3 URL downloader`, `OVA download tool`, `firmware bulk download`, `download manager CLI`, `wget automation`, `checksum verification tool`, `VPN download tool`, `spreadsheet batch download`, `large file downloader`, `wget resume interrupted download`, `Python download script`
 
 ## License
 
