@@ -1,0 +1,31 @@
+# Working files / downloads
+downloads/
+*.DS_Store
+
+# User spreadsheets with real URLs (keep template only)
+main.xlsx
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Claude session
+.claude/
+
+# OS
+Thumbs.db
+.Spotlight-V100
+.Trashes
