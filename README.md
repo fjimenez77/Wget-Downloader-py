@@ -260,4 +260,14 @@ git push origin feature/your-idea
 
 ## License
 
-MIT
+Apache License 2.0 — see [LICENSE](LICENSE) for full text.
+
+```
+Copyright 2026 Felix J. (@fjimenez77) and contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+```
