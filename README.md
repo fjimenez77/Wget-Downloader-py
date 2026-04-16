@@ -76,7 +76,7 @@ git clone https://github.com/fjimenez77/Wget-Downloader-py.git
 cd Wget-Downloader-py
 
 # Run
-python3 bulk_downloader.py
+python3 wget_downloader.py
 ```
 
 On first run, the script checks for dependencies and installs any missing packages automatically.
@@ -235,8 +235,8 @@ cd Wget-Downloader-py
 git checkout -b feature/your-idea
 
 # 4. Make changes, test locally
-python3 bulk_downloader.py
-python3 -m py_compile bulk_downloader.py
+python3 wget_downloader.py
+python3 -m py_compile wget_downloader.py
 
 # 5. Commit + push + open a PR
 git commit -m "Add: your change"

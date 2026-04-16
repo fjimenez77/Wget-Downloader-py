@@ -2,7 +2,7 @@
 """
 WGET Bulk Downloader v2.0
 Human-like · Resume-capable · Privacy-aware
-Usage:  python bulk_downloader.py
+Usage:  python wget_downloader.py
 """
 
 import subprocess

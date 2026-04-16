@@ -32,7 +32,7 @@ Before opening an issue, please:
 - wget: 1.25.0
 
 **What I did**
-1. Ran `python3 bulk_downloader.py`
+1. Ran `python3 wget_downloader.py`
 2. Selected option [1]
 3. Picked `my_urls.csv`
 4. ...
@@ -66,17 +66,17 @@ cd Wget-Downloader-py
 git checkout -b feature/your-feature-name
 
 # Make your changes, test locally
-python3 bulk_downloader.py
+python3 wget_downloader.py
 
 # Verify Python syntax
-python3 -m py_compile bulk_downloader.py
+python3 -m py_compile wget_downloader.py
 ```
 
 ### Code Style
 
 - **Python 3.7+** compatible (avoid 3.10+ syntax like `match` statements)
 - **No new dependencies** unless absolutely necessary — keep `requests`, `pandas`, `openpyxl` as the only third-party packages
-- **Single file** — `bulk_downloader.py` stays the only Python file
+- **Single file** — `wget_downloader.py` stays the only Python file
 - **Comments where logic isn't obvious** — explain the *why*, not the *what*
 - **No type hints required** but welcome for public functions
 - **Match existing formatting** — 4-space indent, double quotes for strings, `divider()` for visual separators
@@ -85,7 +85,7 @@ python3 -m py_compile bulk_downloader.py
 
 The project doesn't have a formal test suite (yet). Please manually verify:
 
-1. **Syntax check**: `python3 -m py_compile bulk_downloader.py`
+1. **Syntax check**: `python3 -m py_compile wget_downloader.py`
 2. **Smoke test the menu**: launch the script, exercise each menu option
 3. **Test edge cases** for whatever you changed:
    - Empty spreadsheet
@@ -116,7 +116,7 @@ Examples:
 ### Pull Request Checklist
 
 - [ ] Branch is up to date with `main`
-- [ ] Python syntax check passes (`python3 -m py_compile bulk_downloader.py`)
+- [ ] Python syntax check passes (`python3 -m py_compile wget_downloader.py`)
 - [ ] Manually tested the affected functionality
 - [ ] No real URLs, AWS keys, or vendor-specific data committed
 - [ ] README updated if user-facing behavior changed
