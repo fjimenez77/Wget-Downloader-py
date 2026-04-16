@@ -254,9 +254,9 @@ git push origin feature/your-idea
 
 ## Contributors
 
-- [@fjimenez77](https://github.com/fjimenez77) (Felix J.) — Maintainer
-- [@netsecops-76](https://github.com/netsecops-76) (Brian Canaday) — Contributor
-- [@DevForgeAtlas](https://github.com/DevForgeAtlas) — Contributor
+- [@fjimenez77](https://github.com/fjimenez77) (Felix J.)
+- [@netsecops-76](https://github.com/netsecops-76) (Brian Canaday)
+- [@DevForgeAtlas](https://github.com/DevForgeAtlas)
 
 ## License
 
