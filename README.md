@@ -220,6 +220,7 @@ downloads/
 ## Contributors
 
 - [@fjimenez77](https://github.com/fjimenez77)
+- [@netsecops-76](https://github.com/netsecops-76) (Brian Canaday)
 - [@DevForgeAtlas](https://github.com/DevForgeAtlas)
 
 ## License
