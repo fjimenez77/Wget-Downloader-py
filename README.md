@@ -217,11 +217,46 @@ downloads/
 
 `wget bulk download`, `batch file downloader`, `resume download python`, `sha256 file verification`, `pre-signed S3 URL downloader`, `OVA download tool`, `firmware bulk download`, `download manager CLI`, `wget automation`, `checksum verification tool`, `VPN download tool`, `spreadsheet batch download`, `large file downloader`, `wget resume interrupted download`, `Python download script`
 
+## Contributing
+
+Pull requests, bug reports, and feature suggestions are welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)** for full guidelines.
+
+**Quick version:**
+
+```bash
+# 1. Fork the repo on GitHub
+# 2. Clone your fork
+git clone https://github.com/YOUR_USERNAME/Wget-Downloader-py.git
+cd Wget-Downloader-py
+
+# 3. Create a feature branch
+git checkout -b feature/your-idea
+
+# 4. Make changes, test locally
+python3 bulk_downloader.py
+python3 -m py_compile bulk_downloader.py
+
+# 5. Commit + push + open a PR
+git commit -m "Add: your change"
+git push origin feature/your-idea
+```
+
+**Before opening a PR:**
+- Open an issue first for non-trivial changes
+- Keep PRs focused (one logical change per PR)
+- Test the affected functionality manually
+- No new external dependencies without discussion
+- No real URLs, AWS keys, or vendor data in commits
+
+**Reporting bugs?** Include OS, Python version, `wget --version`, and reproduction steps.
+
+**Found a security issue?** Don't open a public issue — use [GitHub Security Advisories](https://github.com/fjimenez77/Wget-Downloader-py/security/advisories/new) instead.
+
 ## Contributors
 
-- [@fjimenez77](https://github.com/fjimenez77)
-- [@netsecops-76](https://github.com/netsecops-76) (Brian Canaday)
-- [@DevForgeAtlas](https://github.com/DevForgeAtlas)
+- [@fjimenez77](https://github.com/fjimenez77) — Maintainer
+- [@netsecops-76](https://github.com/netsecops-76) (Brian Canaday) — Contributor
+- [@DevForgeAtlas](https://github.com/DevForgeAtlas) — Contributor
 
 ## License
 
