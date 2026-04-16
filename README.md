@@ -34,7 +34,7 @@ Drop your URLs into a spreadsheet, paste in the vendor's SHA256 checksums, fire 
 - **Smart skip on re-run** -- completed + verified files are skipped instantly. Only failed or missing files get retried.
 
 ### Integrity & Verification
-- **SHA256 checksum verification** -- paste the vendor's hash into the `sha256` column. After download, the script computes the file's SHA256 and compares. Bit-perfect or flagged.
+- **SHA256 checksum verification (optional)** -- paste the vendor's hash into the `sha256` column and the script verifies the file after download. Leave the column blank or omit it entirely if you don't have a checksum -- the file still downloads, verification is just skipped.
 - **Download manifest** -- `download_manifest.json` persists in the output folder. Tracks status (`completed`, `failed`, `sha256_mismatch`), file sizes, timestamps, and attempt counts.
 - **Corruption detection** -- if a file downloads but the checksum doesn't match, it's flagged immediately. No deploying a corrupt OVA into production.
 - **Path traversal protection** -- filenames from spreadsheets are sanitized. No `../../etc/passwd` escaping the output folder.
@@ -100,6 +100,8 @@ Use option **[6]** to generate a blank template, or fill in the included `downlo
 | `file` | no | Output filename (auto-detected from URL if blank) |
 | `sha256` | no | SHA256 checksum for post-download verification (64 hex chars) |
 | `notes` | no | Your comments (ignored by the downloader) |
+
+> **Only `url` is required.** The script works fine without `sha256`, `file`, or `notes`. If you don't have a checksum from the vendor, leave the `sha256` cell blank (or omit the column entirely) -- the file downloads normally and verification is skipped. SHA256 is a recommended safety check, not a dependency.
 
 ### Example: Vendor Share Link to Spreadsheet
 
