@@ -1,7 +1,5 @@
 # WGET Bulk Downloader - Batch File Download Manager with Resume & Checksum Verification
 
-![WGET Bulk Downloader](docs/banner.png)
-
 A Python CLI bulk download manager with resume capability, SHA256 checksum verification, and privacy features. Built on `wget` for downloading large files (OVA images, firmware, ISO, virtual appliances) from pre-signed AWS S3 URLs, Azure Blob Storage, or any HTTP/HTTPS source. Supports batch downloading from spreadsheets (Excel `.xlsx`, `.csv`) with automatic retry, user-agent rotation, and VPN integration.
 
 ```
@@ -124,9 +122,13 @@ Map it to the CSV:
 
 ---
 
-## How It Works
+## At a Glance
 
-![Live terminal session](docs/terminal.png)
+![WGET Bulk Downloader — Features and Live Session](docs/banner.png)
+
+---
+
+## How It Works
 
 ### Download Flow
 
