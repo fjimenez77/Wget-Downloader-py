@@ -22,8 +22,10 @@ build/
 *.swo
 *~
 
-# Claude session
+# Local editor / session state
 .claude/
+.cursor/
+.aider*
 
 # OS
 Thumbs.db
