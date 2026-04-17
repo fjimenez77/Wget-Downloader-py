@@ -83,7 +83,7 @@ On first run, the script checks for dependencies and installs any missing packag
 
 ### Requirements
 
-- **Python 3.7+**
+- **Python 3.9+**
 - **wget** (`brew install wget` on macOS, `sudo apt install wget` on Linux)
 - Python packages: `requests`, `pandas`, `openpyxl` (auto-installed on first run)
 
