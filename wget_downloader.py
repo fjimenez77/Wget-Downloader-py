@@ -20,6 +20,30 @@ REQUIRED = {
     "openpyxl": "openpyxl",
 }
 
+def _pip_install(pkg):
+    """Install one package via pip with PEP 668 fallback handling.
+
+    Modern Python installs (Homebrew on macOS, Debian/Ubuntu/Fedora system
+    Python) block `pip install` into the system interpreter via PEP 668
+    ('externally-managed-environment'). We try, in order:
+      1. Plain `pip install --user`     (works on most older systems)
+      2. Add `--break-system-packages`  (PEP 668 escape hatch)
+    Returns (ok: bool, last_stderr: str).
+    """
+    attempts = [
+        [sys.executable, "-m", "pip", "install", "--user", "--quiet", pkg],
+        [sys.executable, "-m", "pip", "install", "--user", "--quiet",
+         "--break-system-packages", pkg],
+    ]
+    last_err = b""
+    for cmd in attempts:
+        result = subprocess.run(cmd, capture_output=True)
+        if result.returncode == 0:
+            return True, ""
+        last_err = result.stderr
+    return False, last_err.decode(errors="replace").strip()
+
+
 def _check_dependencies():
     """Check all required packages; install any that are missing."""
     missing = []
@@ -39,15 +63,14 @@ def _check_dependencies():
     all_ok = True
     for pkg in missing:
         print(f"  Installing {pkg} ...", end="", flush=True)
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", pkg, "--quiet"],
-            capture_output=True
-        )
-        if result.returncode == 0:
+        ok, err = _pip_install(pkg)
+        if ok:
             print(" ✓")
         else:
             print(f" ✗  FAILED")
-            print(f"     {result.stderr.decode().strip()}")
+            # Show only the first 3 lines of error to keep output tidy
+            for line in err.splitlines()[:3]:
+                print(f"     {line}")
             all_ok = False
 
     print()
@@ -55,7 +78,16 @@ def _check_dependencies():
         print("  ✓  All dependencies installed successfully.\n")
     else:
         print("  ✗  Some packages failed to install.")
-        print("     Try manually:  pip install requests pandas openpyxl\n")
+        print()
+        print("  Likely cause: PEP 668 (externally-managed Python).")
+        print("  Recommended fix — use a virtual environment:")
+        print()
+        print("     python3 -m venv .venv")
+        print("     source .venv/bin/activate     # on macOS/Linux")
+        print("     .venv\\Scripts\\activate         # on Windows")
+        print("     pip install requests pandas openpyxl")
+        print("     python wget_downloader.py")
+        print()
         input("  Press ENTER to continue anyway, or Ctrl+C to exit...")
 
     return all_ok
