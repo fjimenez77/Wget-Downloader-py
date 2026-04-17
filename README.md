@@ -83,7 +83,7 @@ On first run, the script checks for dependencies and installs any missing packag
 
 ### Requirements
 
-- **Python 3.11+**
+- **Python 3.11+** (minimum) — tested on Python 3.14.4 (latest)
 - **wget** (`brew install wget` on macOS, `sudo apt install wget` on Linux)
 - Python packages: `requests`, `pandas`, `openpyxl` (auto-installed on first run)
 
@@ -109,7 +109,7 @@ Your vendor gives you:
 
 ```
 File:           firmware-v2.1.ova
-SHA256:         c1cfa83b7539202b9ac91e6e7cb1fff9005b23c97b1e25d98a1a6d0c38644f2a
+SHA256:         e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 Link:           wget -O firmware-v2.1.ova "https://vendor.s3.amazonaws.com/firmware-v2.1.ova?AWSAccessKeyId=..."
 ```
 
@@ -117,7 +117,7 @@ Map it to the CSV:
 
 ```csv
 #,url,file,sha256,notes
-1,https://vendor.s3.amazonaws.com/firmware-v2.1.ova?AWSAccessKeyId=...,firmware-v2.1.ova,c1cfa83b7539202b9ac91e6e7cb1fff9005b23c97b1e25d98a1a6d0c38644f2a,
+1,https://vendor.s3.amazonaws.com/firmware-v2.1.ova?AWSAccessKeyId=...,firmware-v2.1.ova,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,
 ```
 
 ---
@@ -168,16 +168,16 @@ Spreadsheet (.xlsx/.csv)
 ### IP Check & VPN Verification
 
 ```
-  ➤  207.244.109.241
+  ➤  198.51.100.42
 
   LOCATION & NETWORK
   ────────────────────────────────────────────────────────────
     Country : United States
-    Region  : Virginia
-    City    : Manassas
-    ISP     : Leaseweb USA
-    Org     : Proxima Consulting
-    ASN     : AS30633 Leaseweb USA, Inc.
+    Region  : Example State
+    City    : Example City
+    ISP     : Example VPN Provider
+    Org     : Example Org
+    ASN     : AS00000 Example Hosting, Inc.
     Flags   : datacenter/hosting, proxy/VPN detected
   ────────────────────────────────────────────────────────────
 
