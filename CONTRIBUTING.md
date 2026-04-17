@@ -74,7 +74,7 @@ python3 -m py_compile wget_downloader.py
 
 ### Code Style
 
-- **Python 3.9+** compatible (avoid 3.10+ syntax like `match` statements)
+- **Python 3.11+** compatible
 - **No new dependencies** unless absolutely necessary — keep `requests`, `pandas`, `openpyxl` as the only third-party packages
 - **Single file** — `wget_downloader.py` stays the only Python file
 - **Comments where logic isn't obvious** — explain the *why*, not the *what*
