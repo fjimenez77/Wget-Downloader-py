@@ -31,3 +31,10 @@ build/
 Thumbs.db
 .Spotlight-V100
 .Trashes
+
+# DevForge — keep all DevForge artifacts local; repo is public
+devforge/
+devforge.backup-*
+CLAUDE.md
+CLAUDE.md.backup-*
+CLAUDE.md.user-*
