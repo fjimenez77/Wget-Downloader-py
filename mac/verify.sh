@@ -46,6 +46,15 @@ import sys
 import time
 root = Path(sys.argv[1])
 class Handler(BaseHTTPRequestHandler):
+    def do_HEAD(self):
+        if self.path == '/head-blocked':
+            self.send_response(403)
+            self.send_header('Content-Length', '12')
+        else:
+            self.send_response(200)
+            self.send_header('Content-Length', str(256 * 1024 if self.path.startswith('/slow/') else 5))
+        self.end_headers()
+
     def do_GET(self):
         (root/'agent').write_text(self.headers.get('User-Agent', ''))
         offset = int(self.headers.get('Range','bytes=0-').split('=')[1].split('-')[0])
@@ -93,6 +102,18 @@ struct Checks {
         precondition(templateRows[0].contains("url"))
         let port = try String(contentsOf: root.appendingPathComponent("port"), encoding: .utf8)
         let url = "http://127.0.0.1:\(port)/file?token=example"
+        let probe = Queue()
+        probe.jobs = try pastedJobs("http://127.0.0.1:\(port)/metadata.bin\nhttp://127.0.0.1:\(port)/head-blocked")
+        probe.lookupSizes()
+        let probeDeadline = Date().addingTimeInterval(5)
+        while probe.jobs[0].expectedBytes == nil && Date() < probeDeadline {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        precondition(probe.jobs[0].expectedBytes == 5)
+        let blocked = await remoteFileSize(probe.jobs[1].url, session: .shared)
+        precondition(blocked == nil)
+        precondition(probe.jobs.allSatisfy { $0.status == "Ready" && $0.bytes == 0 })
+        precondition(!FileManager.default.fileExists(atPath: root.appendingPathComponent("offset").path))
         let hash = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
         let signed = "https://example.invalid/upgrade/file.sh?AWSAccessKeyId=TEST&Signature=a%2Bb%3D&Expires=2000000000"
         let link = "[\(signed)](\(signed.replacingOccurrences(of: "&", with: #"\&"#)))"
@@ -184,9 +205,12 @@ struct Checks {
             try? await Task.sleep(for: .milliseconds(50))
         }
         precondition(queue.jobs[0].status == "Paused")
+        precondition(queue.jobs[0].expectedBytes == 256 * 1024)
+        precondition(queue.jobs[0].bytes > 0 && queue.jobs[0].bytes < 256 * 1024)
         precondition(queue.active.contains(ids[1]) && queue.active.contains(ids[3]))
         queue.enqueue(ids[0], minimumDelay: 0, maximumDelay: 0)
         await waitForQueue(queue)
+        precondition(queue.jobs.allSatisfy { $0.expectedBytes == 256 * 1024 })
         precondition(queue.jobs.allSatisfy(\.completed), "\(queue.jobs.map(\.status))")
         precondition(fileSize(destinationURL(root, "1.bin")) == 256 * 1024)
         precondition(try! readHistory(root)["1.bin"]?.attempts == 2)

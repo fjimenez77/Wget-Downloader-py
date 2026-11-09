@@ -306,7 +306,7 @@ func checksum(_ file: URL) throws -> String {
     return hash.finalize().map { String(format: "%02x", $0) }.joined()
 }
 
-private func existingStatus(_ job: Job, in folder: URL, record: Record?) throws -> String? {
+private func existingStatus(_ job: Job, in folder: URL, record: Record?) throws -> (status: String, size: Int64?)? {
     let nested = destinationURL(folder, job.name)
     let flat = folder.appendingPathComponent(job.name)
     let directory = nested.deletingLastPathComponent()
@@ -324,17 +324,28 @@ private func existingStatus(_ job: Job, in folder: URL, record: Record?) throws 
             let after = try URL(fileURLWithPath: file.path).resourceValues(forKeys: keys)
             guard after.isRegularFile == true, after.isSymbolicLink == false,
                   before.fileSize == after.fileSize, before.contentModificationDate == after.contentModificationDate else {
-                return "File changed during check"
+                return ("File changed during check", nil)
             }
-            if matches { return "Verified" }
+            if matches { return ("Verified", before.fileSize.map(Int64.init)) }
         } else if file == nested, record?.status == "completed", let size = before.fileSize,
                   record?.size_bytes == Int64(size),
                   record?.source_id == sourceID(job.url) || record?.url == job.url.absoluteString {
-            return "Already downloaded"
+            return ("Already downloaded", Int64(size))
         }
     }
     guard found else { return nil }
-    return job.hash.isEmpty ? "On disk · checksum needed" : "Checksum mismatch"
+    return (job.hash.isEmpty ? "On disk · checksum needed" : "Checksum mismatch", nil)
+}
+
+func remoteFileSize(_ url: URL, session: URLSession) async -> Int64? {
+    var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
+    request.httpMethod = "HEAD"
+    request.setValue("identity", forHTTPHeaderField: "Accept-Encoding")
+    guard let (_, response) = try? await session.data(for: request),
+          let http = response as? HTTPURLResponse, http.statusCode == 200,
+          let length = http.value(forHTTPHeaderField: "Content-Length"),
+          let size = Int64(length), size >= 0 else { return nil }
+    return size
 }
 
 @MainActor
@@ -347,6 +358,7 @@ final class Queue: ObservableObject {
     @Published var history: [String: Record] = [:]
     @Published private(set) var active = Set<UUID>()
     @Published private(set) var pending: [UUID] = []
+    private var sizeLookup: Task<Void, Never>?
     private var processes: [UUID: Process] = [:]
     private var pausing = Set<UUID>()
     private var cooldowns = Set<UUID>()
@@ -367,8 +379,9 @@ final class Queue: ObservableObject {
             if folder != file {
                 folder = file
                 for index in jobs.indices {
-                    let job = jobs[index]
-                    jobs[index] = Job(url: job.url, name: job.name, hash: job.hash)
+                    jobs[index].status = "Ready"
+                    jobs[index].bytes = 0
+                    jobs[index].bytesPerSecond = 0
                 }
                 message = "\(jobs.count) files ready."
             }
@@ -380,6 +393,7 @@ final class Queue: ObservableObject {
             jobs = loaded
             message = loaded.isEmpty ? "No download URLs found." : "\(loaded.count) files ready."
             if !loaded.isEmpty { await checkExistingFiles() }
+            lookupSizes()
         } catch { message = error.localizedDescription }
     }
 
@@ -392,6 +406,37 @@ final class Queue: ObservableObject {
         }
         jobs += added
         message = "\(jobs.count) files in the queue."
+        lookupSizes()
+    }
+
+    func lookupSizes() {
+        sizeLookup?.cancel()
+        let candidates = jobs.filter { $0.expectedBytes == nil && !$0.completed }
+        sizeLookup = Task { [weak self] in
+            let config = URLSessionConfiguration.ephemeral
+            config.httpShouldSetCookies = false
+            config.timeoutIntervalForResource = 10
+            let session = URLSession(configuration: config)
+            defer { session.finishTasksAndInvalidate() }
+            for job in candidates {
+                guard !Task.isCancelled, let queue = self else { return }
+                guard queue.jobs.contains(where: { $0.id == job.id && $0.expectedBytes == nil }),
+                      !queue.active.contains(job.id) else { continue }
+                let size = await remoteFileSize(job.url, session: session)
+                guard !Task.isCancelled else { return }
+                if let size, let index = queue.jobs.firstIndex(where: { $0.id == job.id }),
+                   queue.jobs[index].expectedBytes == nil, !queue.active.contains(job.id) {
+                    queue.jobs[index].expectedBytes = size
+                }
+            }
+        }
+    }
+
+    func clear() {
+        sizeLookup?.cancel()
+        jobs = []
+        spreadsheet = nil
+        message = "Paste links or choose a spreadsheet."
     }
 
     func refreshHistory() {
@@ -412,7 +457,10 @@ final class Queue: ObservableObject {
                 let status = try await Task.detached {
                     try existingStatus(job, in: selectedFolder, record: records[job.name])
                 }.value
-                if let status { jobs[index].status = status }
+                if let status {
+                    jobs[index].status = status.status
+                    if let size = status.size { jobs[index].expectedBytes = size }
+                }
                 else if job.completed || job.status == "On disk · checksum needed" || job.status == "Checksum mismatch" {
                     jobs[index].status = "Ready"
                 }
@@ -531,7 +579,6 @@ final class Queue: ObservableObject {
             history = updated
         }
         jobs[index].bytes = 0
-        jobs[index].expectedBytes = nil
         guard !pausing.contains(id) else {
             jobs[index].status = "Paused"
             return
@@ -560,11 +607,13 @@ final class Queue: ObservableObject {
                     let actual = try await Task.detached { try checksum(destination) }.value
                     if actual == job.hash {
                         if legacy?.status != "completed" { try save(job, "completed", size) }
+                        jobs[index].expectedBytes = size
                         jobs[index].status = "Verified"
                         return
                     }
                 } else if legacy?.status == "completed", legacy?.size_bytes == size,
                           sameSource {
+                    jobs[index].expectedBytes = size
                     jobs[index].status = "Already downloaded"
                     return
                 }
@@ -577,6 +626,7 @@ final class Queue: ObservableObject {
             } else if !job.hash.isEmpty, fileSize(oldFlat) != nil, oldFlat != historyURL(folder),
                       (try? manager.destinationOfSymbolicLink(atPath: oldFlat.path)) == nil,
                       try await Task.detached(operation: { try checksum(oldFlat) }).value == job.hash {
+                jobs[index].expectedBytes = fileSize(oldFlat)
                 jobs[index].status = "Verified"
                 return
             }
@@ -601,11 +651,13 @@ final class Queue: ObservableObject {
             processes[id] = transfer
             var lastSize = fileSize(partial) ?? 0
             var lastSample = ProcessInfo.processInfo.systemUptime
+            var receivedTotal = false
             while transfer.isRunning {
                 let bytes = fileSize(partial) ?? 0
                 jobs[index].bytes = bytes
-                if jobs[index].expectedBytes == nil, bytes > 0 {
-                    jobs[index].expectedBytes = responseSize(headers)
+                if !receivedTotal, let size = responseSize(headers) {
+                    jobs[index].expectedBytes = size
+                    receivedTotal = true
                 }
                 let now = ProcessInfo.processInfo.systemUptime
                 let elapsed = now - lastSample
@@ -618,6 +670,8 @@ final class Queue: ObservableObject {
             }
             processes[id] = nil
             jobs[index].bytesPerSecond = 0
+            jobs[index].bytes = fileSize(partial) ?? 0
+            if let size = responseSize(headers) { jobs[index].expectedBytes = size }
             if pausing.contains(id), transfer.terminationStatus != 0 {
                 try save(job, "paused", fileSize(partial) ?? 0)
                 jobs[index].status = "Paused"
@@ -645,7 +699,9 @@ final class Queue: ObservableObject {
                 }
             }
             try manager.moveItem(at: partial, to: destination)
-            try save(job, "completed", fileSize(destination) ?? 0)
+            let size = fileSize(destination) ?? 0
+            try save(job, "completed", size)
+            jobs[index].expectedBytes = size
             jobs[index].status = job.hash.isEmpty ? "Downloaded" : "Verified"
         } catch { jobs[index].status = error.localizedDescription }
     }
@@ -752,9 +808,7 @@ struct Downloader: App {
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 12)
                     Button("Clear Queue") {
-                        queue.jobs = []
-                        queue.spreadsheet = nil
-                        queue.message = "Paste links or choose a spreadsheet."
+                        queue.clear()
                     }.fixedSize().disabled(queue.jobs.isEmpty)
                 }.disabled(queue.queueLocked)
                 HStack(alignment: .top) {
@@ -768,7 +822,7 @@ struct Downloader: App {
                         .fixedSize()
                 }.disabled(queue.queueLocked)
                 VStack(spacing: 0) {
-                    queueRow("File", "Status") {
+                    queueRow("File", "Size", "Status") {
                         Text("Action").font(.subheadline.weight(.semibold))
                     }.font(.subheadline.weight(.semibold))
                     Divider()
@@ -776,7 +830,7 @@ struct Downloader: App {
                         LazyVStack(spacing: 0) {
                             ForEach(Array(queue.jobs.enumerated()), id: \.element.id) { index, job in
                                 VStack(alignment: .leading, spacing: 0) {
-                                    queueRow(job.name, completionLabel(job), completed: job.completed) {
+                                    queueRow(job.name, sizeLabel(job), completionLabel(job), completed: job.completed) {
                                         rowActions(job).disabled(queue.checkingFiles)
                                     }
                                     if job.status == "Downloading" {
@@ -847,11 +901,15 @@ struct Downloader: App {
         .defaultSize(width: 860, height: 600)
     }
 
-    private func queueRow<Actions: View>(_ name: String, _ status: String, completed: Bool = false, @ViewBuilder actions: () -> Actions) -> some View {
+    private func queueRow<Actions: View>(_ name: String, _ size: String, _ status: String, completed: Bool = false, @ViewBuilder actions: () -> Actions) -> some View {
         HStack(alignment: .top, spacing: 16) {
             Text(name)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            Text(size)
+                .monospacedDigit()
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: 100, alignment: .leading)
             HStack(alignment: .top, spacing: 5) {
                 if completed { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
                 Text(status).fixedSize(horizontal: false, vertical: true)
@@ -865,6 +923,13 @@ struct Downloader: App {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
+    }
+
+    private func sizeLabel(_ job: Job) -> String {
+        if job.status == "Paused", job.bytes > 0 {
+            return "\(formattedBytes(job.bytes)) of \(job.expectedBytes.map(formattedBytes) ?? "unknown")"
+        }
+        return job.expectedBytes.map(formattedBytes) ?? "Unknown"
     }
 
     private func completionLabel(_ job: Job) -> String {
@@ -997,7 +1062,7 @@ struct Downloader: App {
                 Text("Paste HTTP or HTTPS links, including presigned S3 URLs, or paste a Markdown link, a wget -O command, or a vendor download block with its SHA-256 checksum.")
                 Text("You can also import CSV, TSV, XLSX, XLSM, or XLS. Include a url column, with optional file and sha256 columns.")
                 Text("2. Choose a folder and start").font(.headline)
-                Text("Choose a download folder before importing a spreadsheet. Import checks that folder automatically and highlights confirmed files. Use Check Existing Files to scan again after changing folders or pasting links. Select Start Downloads for the remaining items.")
+                Text("Choose a download folder before importing a spreadsheet. Import checks that folder automatically and highlights confirmed files. Use Check Existing Files to scan again after changing folders or pasting links. The Size column shows totals when available and keeps them visible after pausing. Select Start Downloads for the remaining items.")
                 Text("3. Pause, resume, or check history").font(.headline)
                 Text("Use the row buttons to start, pause, resume, or prioritize a file. Active rows show download speed and progress. Settings controls how many files download at once. History shows completed and failed downloads.")
                 Text("Network and settings").font(.headline)
