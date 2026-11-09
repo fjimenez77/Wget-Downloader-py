@@ -55,7 +55,7 @@ A native SwiftUI app for Apple Silicon Macs. Same job as the CLI — bulk downlo
 
 ### Install
 
-1. Download **[`Wget-Downloader-1.5.1-arm64.dmg`](https://github.com/fjimenez77/Wget-Downloader-py/releases/download/v1.5.1/Wget-Downloader-1.5.1-arm64.dmg)** from the [latest release](https://github.com/fjimenez77/Wget-Downloader-py/releases/latest).
+1. Download **[`Wget-Downloader-1.6-arm64.dmg`](https://github.com/fjimenez77/Wget-Downloader-py/releases/download/v1.6/Wget-Downloader-1.6-arm64.dmg)** from the [latest release](https://github.com/fjimenez77/Wget-Downloader-py/releases/latest).
 2. Open the disk image and drag **Wget Downloader** onto the **Applications** shortcut.
 3. On first launch macOS refuses to open it, saying Apple cannot check it for malicious software. Open **System Settings → Privacy & Security**, scroll to the bottom, click **Open Anyway**, and confirm. You only do this once.
 
@@ -68,8 +68,8 @@ xattr -d com.apple.quarantine "/Applications/Wget Downloader.app"
 > **Why the warning appears.** This build is ad-hoc signed — not signed with an Apple Developer ID certificate and not notarized by Apple, which needs a paid Apple Developer Program membership. macOS has no way to confirm who built it, so it asks you. Verify the download against its checksum if you prefer:
 >
 > ```
-> shasum -a 256 Wget-Downloader-1.5.1-arm64.dmg
-> 7c567c31d744ad35448f93410bae56591693e39f2f380d64bc1c885360757f2a
+> shasum -a 256 Wget-Downloader-1.6-arm64.dmg
+> 624ba136901c2ff7c26787d62a11b058585757b875553d0acc2fa39f75349bd0
 > ```
 
 **Requirements:** an Apple Silicon Mac (M1 or later) running **macOS 13 Ventura or later**. Intel Macs are not supported by this build.
@@ -125,7 +125,7 @@ The status line then summarises the pass as `Folder check · N complete · N nee
 
 ### Parallel transfers
 
-The queue runs two downloads at once by default, and **Settings** allows anything from 1 to 8. Each active row shows the bytes transferred, a progress bar when the server reports a total, and the live rate — both are visible in the screenshot above. Any row can be started, paused, resumed or retried on its own, and **Start Next** moves one ahead of the waiting queue; the concurrency limit still applies to rows you start by hand. **Pause All** stops everything without discarding partial bytes, and the randomized delay applies whenever a slot refills automatically.
+The queue runs two downloads at once by default, and **Settings** allows anything from 1 to 8. Each active row shows the bytes transferred, a progress bar when the server reports a total, and the live rate — both are visible in the screenshot above. A **Size** column carries the total for every row: it is filled when the queue loads, by a `HEAD` request that sends the same rotated browser user agent as the downloads, and a row whose server refuses `HEAD` simply reads `Unknown`. A paused row keeps what it learned and reads `4.2 MB of 220.3 MB`. Any row can be started, paused, resumed or retried on its own, and **Start Next** moves one ahead of the waiting queue; the concurrency limit still applies to rows you start by hand. **Pause All** stops everything without discarding partial bytes, and the randomized delay applies whenever a slot refills automatically.
 
 ### Help, tools and history
 
