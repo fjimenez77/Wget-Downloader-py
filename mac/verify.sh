@@ -47,6 +47,7 @@ import time
 root = Path(sys.argv[1])
 class Handler(BaseHTTPRequestHandler):
     def do_HEAD(self):
+        (root/'head-agent').write_text(self.headers.get('User-Agent', ''))
         if self.path == '/head-blocked':
             self.send_response(403)
             self.send_header('Content-Length', '12')
@@ -110,6 +111,8 @@ struct Checks {
             try? await Task.sleep(for: .milliseconds(50))
         }
         precondition(probe.jobs[0].expectedBytes == 5)
+        let headAgent = try String(contentsOf: root.appendingPathComponent("head-agent"), encoding: .utf8)
+        precondition(browserAgents.contains(headAgent), "size probe sent \(headAgent)")
         let blocked = await remoteFileSize(probe.jobs[1].url, session: .shared)
         precondition(blocked == nil)
         precondition(probe.jobs.allSatisfy { $0.status == "Ready" && $0.bytes == 0 })
@@ -215,7 +218,7 @@ struct Checks {
         precondition(fileSize(destinationURL(root, "1.bin")) == 256 * 1024)
         precondition(try! readHistory(root)["1.bin"]?.attempts == 2)
         print("Passed two simultaneous transfers, live rates, queue priority, independent pause, and resume.")
-        print("Passed pasted URLs and wget commands, unsafe-name rejection, Excel and CSV import, CLI partial migration and Range resume, user-agent rotation, SHA-256, history and smart skip.")
+        print("Passed pasted URLs and wget commands, unsafe-name rejection, Excel and CSV import, CLI partial migration and Range resume, user-agent rotation on downloads and size probes, SHA-256, history and smart skip.")
     }
 }
 SWIFT

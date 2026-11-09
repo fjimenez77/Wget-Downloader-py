@@ -337,10 +337,17 @@ private func existingStatus(_ job: Job, in folder: URL, record: Record?) throws 
     return (job.hash.isEmpty ? "On disk · checksum needed" : "Checksum mismatch", nil)
 }
 
-func remoteFileSize(_ url: URL, session: URLSession) async -> Int64? {
+/// Reads the persisted Settings toggle directly, because a size lookup can run
+/// before the queue has been handed the value through `enqueue`.
+var agentRotationEnabled: Bool {
+    UserDefaults.standard.object(forKey: "rotateAgent") as? Bool ?? true
+}
+
+func remoteFileSize(_ url: URL, session: URLSession, agent: String? = nil) async -> Int64? {
     var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
     request.httpMethod = "HEAD"
     request.setValue("identity", forHTTPHeaderField: "Accept-Encoding")
+    if let agent { request.setValue(agent, forHTTPHeaderField: "User-Agent") }
     guard let (_, response) = try? await session.data(for: request),
           let http = response as? HTTPURLResponse, http.statusCode == 200,
           let length = http.value(forHTTPHeaderField: "Content-Length"),
@@ -412,6 +419,7 @@ final class Queue: ObservableObject {
     func lookupSizes() {
         sizeLookup?.cancel()
         let candidates = jobs.filter { $0.expectedBytes == nil && !$0.completed }
+        let rotate = agentRotationEnabled
         sizeLookup = Task { [weak self] in
             let config = URLSessionConfiguration.ephemeral
             config.httpShouldSetCookies = false
@@ -422,7 +430,8 @@ final class Queue: ObservableObject {
                 guard !Task.isCancelled, let queue = self else { return }
                 guard queue.jobs.contains(where: { $0.id == job.id && $0.expectedBytes == nil }),
                       !queue.active.contains(job.id) else { continue }
-                let size = await remoteFileSize(job.url, session: session)
+                let agent = rotate ? browserAgents.randomElement() : nil
+                let size = await remoteFileSize(job.url, session: session, agent: agent)
                 guard !Task.isCancelled else { return }
                 if let size, let index = queue.jobs.firstIndex(where: { $0.id == job.id }),
                    queue.jobs[index].expectedBytes == nil, !queue.active.contains(job.id) {
