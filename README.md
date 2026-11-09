@@ -2,7 +2,7 @@
 
 A Python CLI bulk download manager with resume capability, SHA256 checksum verification, and privacy features. Built on `wget` for downloading large files (OVA images, firmware, ISO, virtual appliances) from pre-signed AWS S3 URLs, Azure Blob Storage, or any HTTP/HTTPS source. Supports batch downloading from spreadsheets (Excel `.xlsx`, `.csv`) with automatic retry, user-agent rotation, and VPN integration.
 
-> **On a Mac?** There is now a native macOS app — no Terminal, no Python, no `wget` to install. Build it in one command: see [macOS App](#macos-app-v13).
+> **On a Mac?** There is now a native macOS app — no Terminal, no Python, no `wget` to install. [Download it](https://github.com/fjimenez77/Wget-Downloader-py/releases/latest) or see [macOS App](#macos-app-v13).
 
 ```
  ██╗    ██╗ ██████╗ ███████╗████████╗    ██████╗ ██╗
@@ -103,25 +103,35 @@ A native SwiftUI app for Apple Silicon Macs. Same job as the CLI — bulk downlo
 
 ### Install
 
-Build the disk image from source — three commands, about twenty seconds, and the only requirement is the Xcode command line tools:
+1. Download **[`Wget-Downloader-1.3-arm64.dmg`](https://github.com/fjimenez77/Wget-Downloader-py/releases/download/v1.3/Wget-Downloader-1.3-arm64.dmg)** from the [latest release](https://github.com/fjimenez77/Wget-Downloader-py/releases/latest).
+2. Open the disk image and drag **Wget Downloader** onto the **Applications** shortcut.
+3. On first launch macOS refuses to open it, saying Apple cannot check it for malicious software. Open **System Settings → Privacy & Security**, scroll to the bottom, click **Open Anyway**, and confirm. You only do this once.
+
+On macOS 13 and 14 you can instead Control-click the app in Applications and choose **Open**, then **Open** again. From Terminal, this clears the same flag:
 
 ```bash
-git clone https://github.com/fjimenez77/Wget-Downloader-py.git
-cd Wget-Downloader-py
-bash mac/build.sh    # writes dist/Wget Downloader.dmg
+xattr -d com.apple.quarantine "/Applications/Wget Downloader.app"
 ```
 
-Then open `dist/Wget Downloader.dmg`, drag **Wget Downloader** onto the **Applications** shortcut, and launch it from Applications or Spotlight.
-
-> **No pre-built download yet.** Publishing a ready-to-run `.dmg` requires an Apple Developer ID certificate and notarization, which this release does not have. Building locally is the supported install path until then — watch the [Releases page](https://github.com/fjimenez77/Wget-Downloader-py/releases) for a signed image.
+> **Why the warning appears.** This build is ad-hoc signed — not signed with an Apple Developer ID certificate and not notarized by Apple, which needs a paid Apple Developer Program membership. macOS has no way to confirm who built it, so it asks you. Verify the download against its checksum if you prefer:
+>
+> ```
+> shasum -a 256 Wget-Downloader-1.3-arm64.dmg
+> 8a32d9b633811971e2aa5921fb5fef786c71767168e00ba81738b9416d1926a6
+> ```
 
 **Requirements:** an Apple Silicon Mac (M1 or later) running **macOS 13 Ventura or later**. Intel Macs are not supported by this build.
 
 The disk image also carries the credits, the full Apache 2.0 and libxls BSD 2-Clause license texts, and a clickable shortcut back to this repository.
 
-To re-run the checks that ship with the app:
+#### Or build it yourself
+
+Building locally produces an image your own Mac trusts, with no warning to dismiss. It needs only the Xcode command line tools:
 
 ```bash
+git clone https://github.com/fjimenez77/Wget-Downloader-py.git
+cd Wget-Downloader-py
+bash mac/build.sh    # writes dist/Wget Downloader.dmg
 bash mac/verify.sh   # signature, license and download regression checks
 ```
 
