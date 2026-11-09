@@ -2,7 +2,7 @@
 
 A Python CLI bulk download manager with resume capability, SHA256 checksum verification, and privacy features. Built on `wget` for downloading large files (OVA images, firmware, ISO, virtual appliances) from pre-signed AWS S3 URLs, Azure Blob Storage, or any HTTP/HTTPS source. Supports batch downloading from spreadsheets (Excel `.xlsx`, `.csv`) with automatic retry, user-agent rotation, and VPN integration.
 
-> **On a Mac?** There is now a native macOS app — no Terminal, no Python, no `wget` to install. See [macOS App](#macos-app-v13).
+> **On a Mac?** There is now a native macOS app — no Terminal, no Python, no `wget` to install. Build it in one command: see [macOS App](#macos-app-v13).
 
 ```
  ██╗    ██╗ ██████╗ ███████╗████████╗    ██████╗ ██╗
@@ -103,24 +103,29 @@ A native SwiftUI app for Apple Silicon Macs. Same job as the CLI — bulk downlo
 
 ### Install
 
-1. Download `Wget Downloader.dmg` from the **[Releases page](https://github.com/fjimenez77/Wget-Downloader-py/releases)**.
-2. Open the disk image and drag **Wget Downloader** onto the **Applications** shortcut.
-3. Launch it from Applications or Spotlight.
-
-**Requirements:** an Apple Silicon Mac (M1 or later) running **macOS 13 Ventura or later**. Intel Macs are not supported by this build.
-
-The disk image also carries the credits, the full Apache 2.0 and libxls BSD 2-Clause license texts, and a clickable shortcut back to this repository.
-
-#### Or build it yourself
+Build the disk image from source — three commands, about twenty seconds, and the only requirement is the Xcode command line tools:
 
 ```bash
 git clone https://github.com/fjimenez77/Wget-Downloader-py.git
 cd Wget-Downloader-py
 bash mac/build.sh    # writes dist/Wget Downloader.dmg
+```
+
+Then open `dist/Wget Downloader.dmg`, drag **Wget Downloader** onto the **Applications** shortcut, and launch it from Applications or Spotlight.
+
+> **No pre-built download yet.** Publishing a ready-to-run `.dmg` requires an Apple Developer ID certificate and notarization, which this release does not have. Building locally is the supported install path until then — watch the [Releases page](https://github.com/fjimenez77/Wget-Downloader-py/releases) for a signed image.
+
+**Requirements:** an Apple Silicon Mac (M1 or later) running **macOS 13 Ventura or later**. Intel Macs are not supported by this build.
+
+The disk image also carries the credits, the full Apache 2.0 and libxls BSD 2-Clause license texts, and a clickable shortcut back to this repository.
+
+To re-run the checks that ship with the app:
+
+```bash
 bash mac/verify.sh   # signature, license and download regression checks
 ```
 
-Requires the Xcode command line tools. `mac/verify.sh` takes an optional path to a legacy `.xls` fixture to exercise the bundled reader.
+`mac/verify.sh` takes an optional path to a legacy `.xls` fixture to exercise the bundled reader.
 
 ### Two ways to queue downloads
 
