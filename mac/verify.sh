@@ -40,21 +40,36 @@ test -n "$pid"
 kill "$pid"
 echo "Packaged app launches and its signature is valid."
 cat > "$test_dir/server.py" <<'PY'
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import sys
+import time
 root = Path(sys.argv[1])
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         (root/'agent').write_text(self.headers.get('User-Agent', ''))
         offset = int(self.headers.get('Range','bytes=0-').split('=')[1].split('-')[0])
         (root/'offset').write_text(str(offset))
+        if self.path.startswith('/slow/'):
+            total = 256 * 1024
+            self.send_response(206 if offset else 200)
+            self.send_header('Content-Length', str(total - offset))
+            if offset: self.send_header('Content-Range', f'bytes {offset}-{total-1}/{total}')
+            self.end_headers()
+            try:
+                for position in range(offset, total, 16384):
+                    self.wfile.write(b'x' * min(16384, total - position))
+                    self.wfile.flush()
+                    time.sleep(.15)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            return
         self.send_response(206 if offset else 200)
         self.send_header('Content-Length', str(5-offset))
         if offset: self.send_header('Content-Range', f'bytes {offset}-4/5')
         self.end_headers()
         self.wfile.write(b'hello'[offset:])
-server = HTTPServer(('127.0.0.1',0),Handler)
+server = ThreadingHTTPServer(('127.0.0.1',0),Handler)
 (root/'port').write_text(str(server.server_port))
 server.serve_forever()
 PY
@@ -65,6 +80,12 @@ sed '/^@main/,$d' mac/Downloader.swift > "$test_dir/Checks.swift"
 cat >> "$test_dir/Checks.swift" <<'SWIFT'
 @main
 struct Checks {
+    @MainActor static func waitForQueue(_ queue: Queue) async {
+        let deadline = Date().addingTimeInterval(20)
+        while queue.running && Date() < deadline { try? await Task.sleep(for: .milliseconds(50)) }
+        precondition(!queue.running, "Queue timed out")
+    }
+
     @MainActor static func main() async throws {
         let root = URL(fileURLWithPath: CommandLine.arguments[1])
         let template = URL(fileURLWithPath: CommandLine.arguments[2])
@@ -101,14 +122,16 @@ struct Checks {
             .write(to: historyURL(root))
         queue.folder = root
         let second = queue.jobs.removeLast()
-        await queue.start(minimumDelay: 0, maximumDelay: 0)
+        queue.enqueue(minimumDelay: 0, maximumDelay: 0)
+        await waitForQueue(queue)
         precondition(queue.jobs[0].status == "Downloaded", queue.jobs[0].status)
         let range = try String(contentsOf: root.appendingPathComponent("offset"), encoding: .utf8)
         precondition(range == "2")
         let agent = try String(contentsOf: root.appendingPathComponent("agent"), encoding: .utf8)
         precondition(browserAgents.contains(agent))
         queue.jobs.append(second)
-        await queue.start(minimumDelay: 0, maximumDelay: 0, rotateAgent: false)
+        queue.enqueue(minimumDelay: 0, maximumDelay: 0, rotateAgent: false)
+        await waitForQueue(queue)
         precondition(queue.jobs[1].status == "Verified", queue.jobs[1].status)
         let history = try readHistory(root)
         precondition(history["resume file.txt"]?.attempts == 2)
@@ -116,12 +139,58 @@ struct Checks {
         let manifest = try String(contentsOf: historyURL(root), encoding: .utf8)
         precondition(!manifest.contains("token=example"))
         queue.jobs = try pastedJobs("wget -O 'resume file.txt' '\(url)'")
-        await queue.start(minimumDelay: 0, maximumDelay: 0)
+        queue.enqueue(minimumDelay: 0, maximumDelay: 0)
+        await waitForQueue(queue)
         precondition(queue.jobs[0].status == "Already downloaded", queue.jobs[0].status)
+        let folderCheck = Queue()
+        folderCheck.folder = root
+        folderCheck.jobs = try loadJobs([
+            ["url", "file", "sha256"],
+            [url, "checked.txt", hash],
+            [url, "resume file.txt", ""],
+            [url, "flat.txt", hash],
+            [url, "unknown.txt", ""],
+            [url, "bad.txt", hash],
+            [url, "missing.txt", hash],
+        ])
+        try Data("hello".utf8).write(to: root.appendingPathComponent("flat.txt"))
+        try Data("hello".utf8).write(to: root.appendingPathComponent("unknown.txt"))
+        try Data("wrong".utf8).write(to: root.appendingPathComponent("bad.txt"))
+        await folderCheck.checkExistingFiles()
+        precondition(folderCheck.jobs.map(\.status) == [
+            "Verified", "Already downloaded", "Verified", "On disk · checksum needed", "Checksum mismatch", "Ready"
+        ], "\(folderCheck.jobs.map(\.status))")
+        try FileManager.default.removeItem(at: root.appendingPathComponent("flat.txt"))
+        await folderCheck.checkExistingFiles()
+        precondition(folderCheck.jobs[2].status == "Ready")
+        print("Passed folder checks for nested and flat files, history, missing checksums, mismatches, and removed files.")
         let csv = root.appendingPathComponent("sample.csv")
         try "uri,file_name,sha256_checksum\r\n\(url),\"comma,\"\"quote\"\".txt\",\(hash)\r\n".write(to: csv, atomically: true, encoding: .utf8)
         let imported = try loadJobs(csv)
         precondition(imported.first?.name == "comma,\"quote\".txt")
+        queue.jobs = try pastedJobs((1...4).map { "http://127.0.0.1:\(port)/slow/\($0).bin" }.joined(separator: "\n"))
+        let ids = queue.jobs.map(\.id)
+        queue.enqueue(minimumDelay: 0, maximumDelay: 0)
+        precondition(queue.active == Set(ids.prefix(2)))
+        queue.enqueue(ids[3], minimumDelay: 0, maximumDelay: 0)
+        precondition(queue.pending == [ids[3], ids[2]])
+        let deadline = Date().addingTimeInterval(5)
+        while !queue.jobs.prefix(2).allSatisfy({ $0.bytesPerSecond > 0 }) && Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        precondition(queue.jobs.prefix(2).allSatisfy { $0.bytesPerSecond > 0 })
+        queue.pause(ids[0])
+        while queue.active.contains(ids[0]) && Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        precondition(queue.jobs[0].status == "Paused")
+        precondition(queue.active.contains(ids[1]) && queue.active.contains(ids[3]))
+        queue.enqueue(ids[0], minimumDelay: 0, maximumDelay: 0)
+        await waitForQueue(queue)
+        precondition(queue.jobs.allSatisfy(\.completed), "\(queue.jobs.map(\.status))")
+        precondition(fileSize(destinationURL(root, "1.bin")) == 256 * 1024)
+        precondition(try! readHistory(root)["1.bin"]?.attempts == 2)
+        print("Passed two simultaneous transfers, live rates, queue priority, independent pause, and resume.")
         print("Passed pasted URLs and wget commands, unsafe-name rejection, Excel and CSV import, CLI partial migration and Range resume, user-agent rotation, SHA-256, history and smart skip.")
     }
 }
