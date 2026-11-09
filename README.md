@@ -1,8 +1,6 @@
 # WGET Bulk Downloader - Batch File Download Manager with Resume & Checksum Verification
 
-A Python CLI bulk download manager with resume capability, SHA256 checksum verification, and privacy features. Built on `wget` for downloading large files (OVA images, firmware, ISO, virtual appliances) from pre-signed AWS S3 URLs, Azure Blob Storage, or any HTTP/HTTPS source. Supports batch downloading from spreadsheets (Excel `.xlsx`, `.csv`) with automatic retry, user-agent rotation, and VPN integration.
-
-> **On a Mac?** There is now a native macOS app — no Terminal, no Python, no `wget` to install. [Download it](https://github.com/fjimenez77/Wget-Downloader-py/releases/latest) or see [macOS App](#macos-app).
+A bulk download manager with resume capability, SHA256 checksum verification, and privacy features, for downloading large files (OVA images, firmware, ISO, virtual appliances) from pre-signed AWS S3 URLs, Azure Blob Storage, or any HTTP/HTTPS source. Batch downloading from spreadsheets (Excel `.xlsx`, `.csv`) with automatic retry, user-agent rotation, and VPN integration. Ships as a **native macOS app** and a **cross-platform Python CLI**.
 
 ```
  ██╗    ██╗ ██████╗ ███████╗████████╗    ██████╗ ██╗
@@ -16,85 +14,39 @@ A Python CLI bulk download manager with resume capability, SHA256 checksum verif
 
 ---
 
-## Why This Exists
+## Which version do you want?
+
+|  | macOS app | Python CLI |
+| --- | --- | --- |
+| **Best for** | Mac users who want a window | Linux, servers, scripted use |
+| **Install** | Download a `.dmg` | `git clone`, then run it |
+| **Platform** | Apple Silicon, macOS 13+ | macOS, Linux |
+| **Dependencies** | None | Python 3.11+, `wget`, 3 packages |
+| **Download engine** | System `curl` | GNU `wget` |
+| **Input** | Spreadsheet **or** pasted links | Spreadsheet |
+| **Concurrent downloads** | 1–8, two by default | One at a time |
+| **Pre-flight folder check** | Automatic on import, plus on demand | Smart skip on re-run |
+| **Resume · SHA-256 · manifest** | Yes | Yes |
+|  | **[Install the app ↓](#macos-app)** | **[Run the CLI ↓](#python-cli)** |
+
+Both accept raw HTTP and HTTPS URLs, including presigned S3 URLs, and both verify SHA-256 when you supply a checksum. They resume on any server that supports HTTP Range requests. Their in-progress files live in different locations, so avoid pointing both at the same output folder at once.
+
+---
+
+## Why this exists
 
 You get a vendor email with 15 pre-signed S3 download links, each pointing to a multi-gigabyte OVA. You're supposed to `wget -O` each one manually, pray your connection holds, and hope the file isn't corrupt when it lands. If it drops at 90%, you start over.
 
 **Not anymore.**
 
-Drop your URLs into a spreadsheet, paste in the vendor's SHA256 checksums, fire up the script, and walk away. It downloads everything in sequence with human-like timing, resumes interrupted transfers automatically, verifies every file against its checksum, and tracks exactly what's done vs. what still needs pulling. If your VPN drops or your laptop sleeps mid-transfer, just re-run -- it picks up right where it left off and skips anything already verified.
+Drop your URLs into a spreadsheet, paste in the vendor's SHA256 checksums, start it, and walk away. It downloads with human-like timing, resumes interrupted transfers automatically, verifies every file against its checksum, and tracks exactly what's done vs. what still needs pulling. If your VPN drops or your laptop sleeps mid-transfer, just run it again — it picks up right where it left off and skips anything already verified.
 
 ---
 
-## Core Capabilities
-
-### Downloads & Resume
-- **True resume support** -- interrupted downloads pick up from the exact byte via `wget -c`. No re-downloading 20 GB because your connection hiccuped at 19.8 GB.
-- **Automatic retry** -- 3 retries per file with 60-second timeout on stalled connections.
-- **Batch processing** -- reads URLs from `.xlsx`, `.csv`, or `.tsv` spreadsheets. One file, dozens of downloads.
-- **Auto file discovery** -- scans your working directory for spreadsheets and lets you pick from a list. No typing paths.
-- **Smart skip on re-run** -- completed + verified files are skipped instantly. Only failed or missing files get retried.
-
-### Integrity & Verification
-- **SHA256 checksum verification (optional)** -- paste the vendor's hash into the `sha256` column and the script verifies the file after download. Leave the column blank or omit it entirely if you don't have a checksum -- the file still downloads, verification is just skipped.
-- **Download manifest** -- `download_manifest.json` persists in the output folder. Tracks status (`completed`, `failed`, `sha256_mismatch`), file sizes, timestamps, and attempt counts.
-- **Corruption detection** -- if a file downloads but the checksum doesn't match, it's flagged immediately. No deploying a corrupt OVA into production.
-- **Path traversal protection** -- filenames from spreadsheets are sanitized. No `../../etc/passwd` escaping the output folder.
-
-### Privacy & OPSEC
-- **User-Agent rotation** -- cycles through 6 real browser User-Agent strings (Chrome, Firefox, Safari on Windows/macOS/Linux). Server logs see a browser, not `Wget/1.25.0`.
-- **Human-like timing** -- configurable random delays between downloads (default 4-15 seconds). Traffic pattern looks like a person clicking links, not a script hammering an endpoint.
-- **Built-in IP checker** -- option [3] queries your public IP and runs geolocation. Shows country, city, ISP, ASN, and whether it's flagged as a datacenter/VPN IP. Know your exit node before you start.
-- **VPN detection** -- automatically tells you if your current IP looks like a VPN/datacenter or a residential ISP. If it's residential, you get a warning before downloading.
-- **VPN recommendations** -- built-in guide covering Mullvad, ProtonVPN, and IVPN with privacy comparisons, payment anonymity, and setup checklists.
-
-### Operational
-- **Graceful Ctrl+C** -- interrupt mid-download and the manifest saves, a summary prints, and you return to the menu cleanly. No tracebacks, no lost state.
-- **Template generator** -- option [6] creates a blank `.csv` with the correct headers. Fill it in, run it, done.
-- **Status dashboard** -- option [5] reads the manifest and prints a table: what completed, what failed, file sizes, timestamps, and whether the file still exists on disk.
-- **Dependency bootstrap** -- first run auto-installs `requests`, `pandas`, and `openpyxl` if missing. Checks for `wget` on PATH. Zero manual setup.
-
----
-
-## Menu
-
-```
-  [1]  Download from file          (.xlsx or .csv)
-  [2]  Traffic obfuscation guide   (VPN info & tips)
-  [3]  Check my current public IP
-  [4]  Quick start & help
-  [5]  View download status        (manifest report)
-  [6]  Generate download template  (blank .csv)
-  [0]  Exit
-```
-
----
-
-## Quick Start
-
-```bash
-# Clone
-git clone https://github.com/fjimenez77/Wget-Downloader-py.git
-cd Wget-Downloader-py
-
-# Run
-python3 wget_downloader.py
-```
-
-On first run, the script checks for dependencies and installs any missing packages automatically.
-
-### Requirements
-
-- **Python 3.11+** (minimum) — tested on Python 3.14.4 (latest)
-- **wget** (`brew install wget` on macOS, `sudo apt install wget` on Linux)
-- Python packages: `requests`, `pandas`, `openpyxl` (auto-installed on first run)
-
----
-
-## macOS App
+## macOS app
 
 <p align="center">
-  <img src="docs/macos/wget-downloader-logo.png" alt="Wget Downloader app icon — a bright green arrow pointing down into an open tray, on a dark rounded square" width="150">
+  <img src="docs/macos/wget-downloader-logo.png" alt="Wget Downloader app icon — a bright green arrow pointing down into an open tray, on a dark rounded square" width="140">
 </p>
 
 A native SwiftUI app for Apple Silicon Macs. Same job as the CLI — bulk downloads, resume, SHA-256 verification, randomized delays and user-agent rotation — with no Terminal, no Python, no Homebrew, and no `wget` to install. It downloads with the system `curl`, several files at a time, and checks the destination folder before it starts so finished work is not downloaded twice.
@@ -124,7 +76,8 @@ xattr -d com.apple.quarantine "/Applications/Wget Downloader.app"
 
 The disk image also carries the credits, the full Apache 2.0 and libxls BSD 2-Clause license texts, and a clickable shortcut back to this repository.
 
-#### Or build it yourself
+<details>
+<summary><b>Or build it yourself</b></summary>
 
 Building locally produces an image your own Mac trusts, with no warning to dismiss. It needs only the Xcode command line tools:
 
@@ -137,15 +90,13 @@ bash mac/verify.sh   # signature, license and download regression checks
 
 `mac/verify.sh` takes an optional path to a legacy `.xls` fixture to exercise the bundled reader.
 
-### Two ways to queue downloads
+</details>
 
-**Choose Spreadsheet** reads the first worksheet of a `.csv`, `.tsv`, `.xlsx`, `.xlsm`, or legacy `.xls` file, using the same `url`, `file`, and `sha256` columns as the CLI — including the CLI's header aliases.
+### Adding downloads
 
-**Paste Links** takes one entry per line, straight from a vendor email.
+**Choose Spreadsheet** reads the first worksheet of a `.csv`, `.tsv`, `.xlsx`, `.xlsm`, or legacy `.xls` file, using the same `url`, `file`, and `sha256` columns as the CLI — including the CLI's header aliases. See [Spreadsheet format](#spreadsheet-format).
 
-![The Paste download links sheet — a text area holding one plain URL per line alongside a wget -O command, with Cancel and Add to Queue buttons](docs/macos/paste-links.png)
-
-It understands:
+**Paste Links** takes one entry per line, straight from a vendor email, and understands:
 
 - raw HTTP and HTTPS URLs, including presigned S3 links
 - Markdown-wrapped links
@@ -176,36 +127,105 @@ The status line then summarises the pass as `Folder check · N complete · N nee
 
 The queue runs two downloads at once by default, and **Settings** allows anything from 1 to 8. Each active row shows the bytes transferred, a progress bar when the server reports a total, and the live rate — both are visible in the screenshot above. Any row can be started, paused, resumed or retried on its own, and **Start Next** moves one ahead of the waiting queue; the concurrency limit still applies to rows you start by hand. **Pause All** stops everything without discarding partial bytes, and the randomized delay applies whenever a slot refills automatically.
 
-### Built-in help and tools
-
-![The How to Use sheet — numbered steps for adding downloads, choosing a folder and starting, and pausing or resuming, followed by network and settings guidance](docs/macos/how-to-use.png)
+### Help, tools and history
 
 **How to Use** explains the spreadsheet columns and every supported paste format without leaving the app. **Tools** adds a configurable CSV template generator, a quick start, VPN guidance, and a user-initiated public IP / geolocation and proxy-hosting check that ports the CLI's service chain — detection is approximate. **Settings** persists the randomized delay range and browser user-agent rotation, defaulting to the CLI's 4–15 seconds with rotation enabled.
 
 **History** reads `download_manifest.json` from the selected output folder and shows status, size, attempt count, on-disk state, and the last completion or error. New downloads use the CLI's `output/filename-stem/filename` layout, so a transfer the CLI already completed can be skipped, and a transfer the CLI recorded as failed can be resumed. New manifest rows store a source fingerprint in place of the full URL; older rows written by the CLI remain readable.
 
-### macOS app vs. Python CLI
+<details>
+<summary><b>More screenshots</b></summary>
 
-| | macOS app | Python CLI |
-| --- | --- | --- |
-| Interface | Native window, installed from a DMG | Terminal menu |
-| Download engine | System `curl` | GNU `wget` |
-| Dependencies | None | Python 3.11+, `wget`, `requests`, `pandas`, `openpyxl` |
-| Platform | Apple Silicon, macOS 13+ | macOS, Linux |
-| Input | Spreadsheet **or** Paste Links | Spreadsheet |
-| Concurrent downloads | 1–8, two by default | One at a time |
-| Pre-flight folder check | Automatic on import, plus on demand | Smart skip on re-run |
-| Resume, SHA-256, manifest | Yes | Yes |
+All captures live in [`docs/macos/`](docs/macos/) and use synthetic URLs and filenames.
 
-Both versions accept raw HTTP and HTTPS URLs, including presigned S3 URLs, and support optional SHA-256 verification. The Python CLI takes the raw link in the spreadsheet's `url` column, with optional `file` and `sha256` columns. The Mac app also offers **Paste Links**, which accepts raw URLs, Markdown links, supported `wget -O` commands, and labeled vendor blocks with checksums. For the CLI, copy the URL, filename, and checksum from those blocks into the corresponding spreadsheet columns.
+**Paste Links** — one URL or `wget` command per line.
 
-The Mac app uses the system `curl` and the CLI uses GNU `wget`. Both support resuming on servers that support HTTP Range requests. Their in-progress files use different locations, so avoid running both versions against the same output folder concurrently.
+![The Paste download links sheet — a text area holding one plain URL per line alongside a wget -O command, with Cancel and Add to Queue buttons](docs/macos/paste-links.png)
+
+**How to Use** — the built-in guide.
+
+![The How to Use sheet — numbered steps for adding downloads, choosing a folder and starting, and pausing or resuming, followed by network and settings guidance](docs/macos/how-to-use.png)
+
+**The queue at rest** — files imported and ready to start.
+
+![Wget Downloader main window — a queue of four files each marked Ready, the chosen download folder, the Paste Links and Choose Spreadsheet buttons, and Start Downloads](docs/macos/wget-downloader.png)
+
+</details>
 
 ---
 
-## Spreadsheet Format
+## Python CLI
 
-Use option **[6]** to generate a blank template, or fill in the included `downloads_template.xlsx`.
+Cross-platform, menu-driven, built on GNU `wget`. Runs anywhere Python 3.11+ and `wget` do.
+
+```bash
+# Clone
+git clone https://github.com/fjimenez77/Wget-Downloader-py.git
+cd Wget-Downloader-py
+
+# Run
+python3 wget_downloader.py
+```
+
+On first run, the script checks for dependencies and installs any missing packages automatically.
+
+### Requirements
+
+- **Python 3.11+** (minimum) — tested on Python 3.14.4 (latest)
+- **wget** (`brew install wget` on macOS, `sudo apt install wget` on Linux)
+- Python packages: `requests`, `pandas`, `openpyxl` (auto-installed on first run)
+
+### Menu
+
+```
+  [1]  Download from file          (.xlsx or .csv)
+  [2]  Traffic obfuscation guide   (VPN info & tips)
+  [3]  Check my current public IP
+  [4]  Quick start & help
+  [5]  View download status        (manifest report)
+  [6]  Generate download template  (blank .csv)
+  [0]  Exit
+```
+
+![WGET Bulk Downloader — Features and Live Session](docs/banner.png)
+
+### Capabilities
+
+**Downloads & resume**
+
+- **True resume support** -- interrupted downloads pick up from the exact byte via `wget -c`. No re-downloading 20 GB because your connection hiccuped at 19.8 GB.
+- **Automatic retry** -- 3 retries per file with 60-second timeout on stalled connections.
+- **Batch processing** -- reads URLs from `.xlsx`, `.csv`, or `.tsv` spreadsheets. One file, dozens of downloads.
+- **Auto file discovery** -- scans your working directory for spreadsheets and lets you pick from a list. No typing paths.
+- **Smart skip on re-run** -- completed + verified files are skipped instantly. Only failed or missing files get retried.
+
+**Integrity & verification**
+
+- **SHA256 checksum verification (optional)** -- paste the vendor's hash into the `sha256` column and the script verifies the file after download. Leave the column blank or omit it entirely if you don't have a checksum -- the file still downloads, verification is just skipped.
+- **Download manifest** -- `download_manifest.json` persists in the output folder. Tracks status (`completed`, `failed`, `sha256_mismatch`), file sizes, timestamps, and attempt counts.
+- **Corruption detection** -- if a file downloads but the checksum doesn't match, it's flagged immediately. No deploying a corrupt OVA into production.
+- **Path traversal protection** -- filenames from spreadsheets are sanitized. No `../../etc/passwd` escaping the output folder.
+
+**Privacy & OPSEC**
+
+- **User-Agent rotation** -- cycles through 6 real browser User-Agent strings (Chrome, Firefox, Safari on Windows/macOS/Linux). Server logs see a browser, not `Wget/1.25.0`.
+- **Human-like timing** -- configurable random delays between downloads (default 4-15 seconds). Traffic pattern looks like a person clicking links, not a script hammering an endpoint.
+- **Built-in IP checker** -- option [3] queries your public IP and runs geolocation. Shows country, city, ISP, ASN, and whether it's flagged as a datacenter/VPN IP. Know your exit node before you start.
+- **VPN detection** -- automatically tells you if your current IP looks like a VPN/datacenter or a residential ISP. If it's residential, you get a warning before downloading.
+- **VPN recommendations** -- built-in guide covering Mullvad, ProtonVPN, and IVPN with privacy comparisons, payment anonymity, and setup checklists.
+
+**Operational**
+
+- **Graceful Ctrl+C** -- interrupt mid-download and the manifest saves, a summary prints, and you return to the menu cleanly. No tracebacks, no lost state.
+- **Template generator** -- option [6] creates a blank `.csv` with the correct headers. Fill it in, run it, done.
+- **Status dashboard** -- option [5] reads the manifest and prints a table: what completed, what failed, file sizes, timestamps, and whether the file still exists on disk.
+- **Dependency bootstrap** -- first run auto-installs `requests`, `pandas`, and `openpyxl` if missing. Checks for `wget` on PATH. Zero manual setup.
+
+---
+
+## Spreadsheet format
+
+Both versions read the same sheet. Use option **[6]** in the CLI or **Tools** in the Mac app to generate a blank template, or fill in the included `downloads_template.xlsx`.
 
 | Column | Required | Description |
 |--------|----------|-------------|
@@ -217,7 +237,7 @@ Use option **[6]** to generate a blank template, or fill in the included `downlo
 
 > **Only `url` is required.** The script works fine without `sha256`, `file`, or `notes`. If you don't have a checksum from the vendor, leave the `sha256` cell blank (or omit the column entirely) -- the file downloads normally and verification is skipped. SHA256 is a recommended safety check, not a dependency.
 
-### Example: Vendor Share Link to Spreadsheet
+### Example: vendor share link to spreadsheet
 
 Your vendor gives you:
 
@@ -234,17 +254,13 @@ Map it to the CSV:
 1,https://vendor.s3.amazonaws.com/firmware-v2.1.ova?AWSAccessKeyId=...,firmware-v2.1.ova,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,
 ```
 
----
-
-## At a Glance
-
-![WGET Bulk Downloader — Features and Live Session](docs/banner.png)
+In the Mac app you can skip the sheet entirely and paste that vendor block straight into **Paste Links** — it pulls the URL, filename and checksum out for you.
 
 ---
 
-## How It Works
+## How it works
 
-### Download Flow
+### Download flow
 
 ```
 Spreadsheet (.xlsx/.csv)
@@ -272,14 +288,25 @@ Spreadsheet (.xlsx/.csv)
 └─────────────────────────────────┘
 ```
 
-### Resume Across Runs
+### Resume across runs
 
 1. First run: downloads file, verifies SHA256, marks `completed` in manifest
 2. Connection drops mid-file: partial file stays on disk, manifest shows `failed`
 3. Re-run: completed files skip instantly, partial files resume from last byte
 4. All files done: manifest shows everything `completed + SHA256 verified`
 
-### IP Check & VPN Verification
+### Output structure
+
+```
+downloads/
+  download_manifest.json          # completion + verification tracking
+  firmware-v2.1/
+    firmware-v2.1.ova             # downloaded & verified
+  toolbox-setup/
+    toolbox-setup.sh              # downloaded & verified
+```
+
+### IP check & VPN verification
 
 ```
   ➤  198.51.100.42
@@ -298,7 +325,7 @@ Spreadsheet (.xlsx/.csv)
   ✓  This looks like a VPN / datacenter IP — good.
 ```
 
-### Status Dashboard
+### Status dashboard
 
 ```
   ✓  📁  firmware-v2.1.ova                    21.3 GB  2026-04-15T12:30
@@ -311,20 +338,7 @@ Spreadsheet (.xlsx/.csv)
 
 ---
 
-## Output Structure
-
-```
-downloads/
-  download_manifest.json          # completion + verification tracking
-  firmware-v2.1/
-    firmware-v2.1.ova             # downloaded & verified
-  toolbox-setup/
-    toolbox-setup.sh              # downloaded & verified
-```
-
----
-
-## Use Cases
+## Use cases
 
 - **IT / Infrastructure teams** pulling OVA/OVF virtual machine images from vendor portals
 - **Security teams** staging firmware and patch files with integrity verification before deployment
@@ -334,10 +348,6 @@ downloads/
 - **Compliance workflows** requiring proof of file integrity via SHA256 verification logs
 
 ---
-
-## Keywords
-
-`wget bulk download`, `batch file downloader`, `resume download python`, `sha256 file verification`, `pre-signed S3 URL downloader`, `OVA download tool`, `firmware bulk download`, `download manager CLI`, `wget automation`, `checksum verification tool`, `VPN download tool`, `spreadsheet batch download`, `large file downloader`, `wget resume interrupted download`, `Python download script`
 
 ## Contributing
 
@@ -370,6 +380,8 @@ git push origin feature/your-idea
 - No new external dependencies without discussion
 - No real URLs, AWS keys, or vendor data in commits
 
+Changes to the Mac app live in [`mac/`](mac/). Run `bash mac/build.sh` and `bash mac/verify.sh` before opening a PR.
+
 **Reporting bugs?** Include OS, Python version, `wget --version`, and reproduction steps.
 
 **Found a security issue?** Don't open a public issue — use [GitHub Security Advisories](https://github.com/fjimenez77/Wget-Downloader-py/security/advisories/new) instead.
@@ -393,3 +405,9 @@ You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 ```
+
+The Mac app bundles [libxls](https://github.com/libxls/libxls) for legacy `.xls` reading, under the BSD 2-Clause License. Both license texts ship inside the disk image.
+
+---
+
+<sub>`wget bulk download`, `batch file downloader`, `resume download python`, `sha256 file verification`, `pre-signed S3 URL downloader`, `OVA download tool`, `firmware bulk download`, `download manager CLI`, `wget automation`, `checksum verification tool`, `VPN download tool`, `spreadsheet batch download`, `large file downloader`, `wget resume interrupted download`, `Python download script`, `macOS download manager`, `parallel downloads mac`</sub>
