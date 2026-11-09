@@ -2,6 +2,8 @@
 
 A Python CLI bulk download manager with resume capability, SHA256 checksum verification, and privacy features. Built on `wget` for downloading large files (OVA images, firmware, ISO, virtual appliances) from pre-signed AWS S3 URLs, Azure Blob Storage, or any HTTP/HTTPS source. Supports batch downloading from spreadsheets (Excel `.xlsx`, `.csv`) with automatic retry, user-agent rotation, and VPN integration.
 
+> **On a Mac?** There is now a native macOS app — no Terminal, no Python, no `wget` to install. See [macOS App](#macos-app-v13).
+
 ```
  ██╗    ██╗ ██████╗ ███████╗████████╗    ██████╗ ██╗
  ██║    ██║██╔════╝ ██╔════╝╚══██╔══╝    ██╔══██╗██║
@@ -86,6 +88,80 @@ On first run, the script checks for dependencies and installs any missing packag
 - **Python 3.11+** (minimum) — tested on Python 3.14.4 (latest)
 - **wget** (`brew install wget` on macOS, `sudo apt install wget` on Linux)
 - Python packages: `requests`, `pandas`, `openpyxl` (auto-installed on first run)
+
+---
+
+## macOS App (v1.3)
+
+<p align="center">
+  <img src="docs/macos/wget-downloader-logo.png" alt="Wget Downloader app icon — a bright green arrow pointing down into an open tray, on a dark rounded square" width="150">
+</p>
+
+A native SwiftUI app for Apple Silicon Macs. Same job as the CLI — bulk downloads, resume, SHA-256 verification, randomized delays and user-agent rotation — with no Terminal, no Python, no Homebrew, and no `wget` to install. It downloads with the system `curl`.
+
+![Wget Downloader main window on macOS — a queue of four files each marked Ready, the chosen download folder, the Paste Links and Choose Spreadsheet buttons, and Start Downloads](docs/macos/wget-downloader.png)
+
+### Install
+
+1. Download `Wget Downloader.dmg` from the **[Releases page](https://github.com/fjimenez77/Wget-Downloader-py/releases)**.
+2. Open the disk image and drag **Wget Downloader** onto the **Applications** shortcut.
+3. Launch it from Applications or Spotlight.
+
+**Requirements:** an Apple Silicon Mac (M1 or later) running **macOS 13 Ventura or later**. Intel Macs are not supported by this build.
+
+The disk image also carries the credits, the full Apache 2.0 and libxls BSD 2-Clause license texts, and a clickable shortcut back to this repository.
+
+#### Or build it yourself
+
+```bash
+git clone https://github.com/fjimenez77/Wget-Downloader-py.git
+cd Wget-Downloader-py
+bash mac/build.sh    # writes dist/Wget Downloader.dmg
+bash mac/verify.sh   # signature, license and download regression checks
+```
+
+Requires the Xcode command line tools. `mac/verify.sh` takes an optional path to a legacy `.xls` fixture to exercise the bundled reader.
+
+### Two ways to queue downloads
+
+**Choose Spreadsheet** reads the first worksheet of a `.csv`, `.tsv`, `.xlsx`, `.xlsm`, or legacy `.xls` file, using the same `url`, `file`, and `sha256` columns as the CLI — including the CLI's header aliases.
+
+**Paste Links** takes one entry per line, straight from a vendor email.
+
+![The Paste download links sheet — a text area holding one plain URL per line alongside a wget -O command, with Cancel and Add to Queue buttons](docs/macos/paste-links.png)
+
+It understands:
+
+- raw HTTP and HTTPS URLs, including presigned S3 links
+- Markdown-wrapped links
+- `wget URL`, `wget -O filename URL`, `--output-document` in place of `-O`, and an optional `-c` / `--continue`
+- labeled vendor download blocks, and a combined `Checksum: <SHA-256> wget -O ...` line
+- a plain URL plus an optional filename and SHA-256, separated by tabs
+
+Pasted text is parsed as data and never passed through a shell. Arbitrary `wget` flags and shell syntax are outside the supported input format, and filenames are sanitized the same way as in the CLI.
+
+### Built-in help and tools
+
+![The How to Use sheet — numbered steps for adding downloads, choosing a folder and starting, and pausing or resuming, followed by network and settings guidance](docs/macos/how-to-use.png)
+
+**How to Use** explains the spreadsheet columns and every supported paste format without leaving the app. **Tools** adds a configurable CSV template generator, a quick start, VPN guidance, and a user-initiated public IP / geolocation and proxy-hosting check that ports the CLI's service chain — detection is approximate. **Settings** persists the randomized delay range and browser user-agent rotation, defaulting to the CLI's 4–15 seconds with rotation enabled.
+
+**History** reads `download_manifest.json` from the selected output folder and shows status, size, attempt count, on-disk state, and the last completion or error. New downloads use the CLI's `output/filename-stem/filename` layout, so a transfer the CLI already completed can be skipped, and a transfer the CLI recorded as failed can be resumed. New manifest rows store a source fingerprint in place of the full URL; older rows written by the CLI remain readable.
+
+### macOS app vs. Python CLI
+
+| | macOS app | Python CLI |
+| --- | --- | --- |
+| Interface | Native window, installed from a DMG | Terminal menu |
+| Download engine | System `curl` | GNU `wget` |
+| Dependencies | None | Python 3.11+, `wget`, `requests`, `pandas`, `openpyxl` |
+| Platform | Apple Silicon, macOS 13+ | macOS, Linux |
+| Input | Spreadsheet **or** Paste Links | Spreadsheet |
+| Resume, SHA-256, manifest | Yes | Yes |
+
+Both versions accept raw HTTP and HTTPS URLs, including presigned S3 URLs, and support optional SHA-256 verification. The Python CLI takes the raw link in the spreadsheet's `url` column, with optional `file` and `sha256` columns. The Mac app also offers **Paste Links**, which accepts raw URLs, Markdown links, supported `wget -O` commands, and labeled vendor blocks with checksums. For the CLI, copy the URL, filename, and checksum from those blocks into the corresponding spreadsheet columns.
+
+The Mac app uses the system `curl` and the CLI uses GNU `wget`. Both support resuming on servers that support HTTP Range requests. Their in-progress files use different locations, so avoid running both versions against the same output folder concurrently.
 
 ---
 

@@ -1,0 +1,3 @@
+https://github.com/libxls/libxls
+Commit 93f1ad5e2d8af092884204b8293c770f39691ea5
+Unmodified library sources and headers. config.h is the macOS build configuration.
