@@ -2,7 +2,7 @@
 
 A Python CLI bulk download manager with resume capability, SHA256 checksum verification, and privacy features. Built on `wget` for downloading large files (OVA images, firmware, ISO, virtual appliances) from pre-signed AWS S3 URLs, Azure Blob Storage, or any HTTP/HTTPS source. Supports batch downloading from spreadsheets (Excel `.xlsx`, `.csv`) with automatic retry, user-agent rotation, and VPN integration.
 
-> **On a Mac?** There is now a native macOS app — no Terminal, no Python, no `wget` to install. [Download it](https://github.com/fjimenez77/Wget-Downloader-py/releases/latest) or see [macOS App](#macos-app-v13).
+> **On a Mac?** There is now a native macOS app — no Terminal, no Python, no `wget` to install. [Download it](https://github.com/fjimenez77/Wget-Downloader-py/releases/latest) or see [macOS App](#macos-app).
 
 ```
  ██╗    ██╗ ██████╗ ███████╗████████╗    ██████╗ ██╗
@@ -91,15 +91,15 @@ On first run, the script checks for dependencies and installs any missing packag
 
 ---
 
-## macOS App (v1.3)
+## macOS App
 
 <p align="center">
   <img src="docs/macos/wget-downloader-logo.png" alt="Wget Downloader app icon — a bright green arrow pointing down into an open tray, on a dark rounded square" width="150">
 </p>
 
-A native SwiftUI app for Apple Silicon Macs. Same job as the CLI — bulk downloads, resume, SHA-256 verification, randomized delays and user-agent rotation — with no Terminal, no Python, no Homebrew, and no `wget` to install. It downloads with the system `curl`.
+A native SwiftUI app for Apple Silicon Macs. Same job as the CLI — bulk downloads, resume, SHA-256 verification, randomized delays and user-agent rotation — with no Terminal, no Python, no Homebrew, and no `wget` to install. It downloads with the system `curl`, several files at a time, and checks the destination folder before it starts so finished work is not downloaded twice.
 
-![Wget Downloader main window on macOS — a queue of four files each marked Ready, the chosen download folder, the Paste Links and Choose Spreadsheet buttons, and Start Downloads](docs/macos/wget-downloader.png)
+![The Wget Downloader queue running two transfers at once — one row at 3.18 GB of 50.44 GB and 15 KB/s, another at 89 MB of 220.3 MB and 2.3 MB/s, a third marked Queued, a finished row marked Download complete · SHA-256 verified, and a 2 active · 1 queued summary](docs/macos/parallel-downloads.png)
 
 ### Install
 
@@ -126,7 +126,7 @@ The disk image also carries the credits, the full Apache 2.0 and libxls BSD 2-Cl
 
 #### Or build it yourself
 
-Building locally produces an image your own Mac trusts, with no warning to dismiss. It needs only the Xcode command line tools:
+Building locally produces an image your own Mac trusts, with no warning to dismiss, and it is currently the only way to get **1.5.1** — the published download above is 1.3, which has neither parallel transfers nor the automatic folder check. It needs only the Xcode command line tools:
 
 ```bash
 git clone https://github.com/fjimenez77/Wget-Downloader-py.git
@@ -155,6 +155,27 @@ It understands:
 
 Pasted text is parsed as data and never passed through a shell. Arbitrary `wget` flags and shell syntax are outside the supported input format, and filenames are sanitized the same way as in the CLI.
 
+### Automatic folder checking
+
+Choose the download folder **before** importing a spreadsheet. On a successful import the app scans that folder and marks every row it recognises, so a re-run only fetches what is genuinely missing. The scan runs entirely on your Mac — it reads the files on disk and `download_manifest.json`, and contacts nothing.
+
+| Status | What it means |
+| --- | --- |
+| `Verified` | the file is on disk and its SHA-256 matches the checksum in the sheet |
+| `Already downloaded` | the manifest records a completed transfer of the same source at the same size, and the sheet supplied no checksum |
+| `On disk · checksum needed` | a file of that name is there, but the sheet has no checksum to confirm it |
+| `Checksum mismatch` | a file of that name is there and does not match the supplied checksum |
+| `File changed during check` | the file was modified while it was being read |
+| `Could not check file` | the file could not be read |
+
+The status line then summarises the pass as `Folder check · N complete · N need review.`
+
+**Check Existing Files** runs the same scan whenever you ask. Use it after switching folders, and after **Paste Links**, which does not trigger the automatic scan.
+
+### Parallel transfers
+
+The queue runs two downloads at once by default, and **Settings** allows anything from 1 to 8. Each active row shows the bytes transferred, a progress bar when the server reports a total, and the live rate — both are visible in the screenshot above. Any row can be started, paused, resumed or retried on its own, and **Start Next** moves one ahead of the waiting queue; the concurrency limit still applies to rows you start by hand. **Pause All** stops everything without discarding partial bytes, and the randomized delay applies whenever a slot refills automatically.
+
 ### Built-in help and tools
 
 ![The How to Use sheet — numbered steps for adding downloads, choosing a folder and starting, and pausing or resuming, followed by network and settings guidance](docs/macos/how-to-use.png)
@@ -172,6 +193,8 @@ Pasted text is parsed as data and never passed through a shell. Arbitrary `wget`
 | Dependencies | None | Python 3.11+, `wget`, `requests`, `pandas`, `openpyxl` |
 | Platform | Apple Silicon, macOS 13+ | macOS, Linux |
 | Input | Spreadsheet **or** Paste Links | Spreadsheet |
+| Concurrent downloads | 1–8, two by default | One at a time |
+| Pre-flight folder check | Automatic on import, plus on demand | Smart skip on re-run |
 | Resume, SHA-256, manifest | Yes | Yes |
 
 Both versions accept raw HTTP and HTTPS URLs, including presigned S3 URLs, and support optional SHA-256 verification. The Python CLI takes the raw link in the spreadsheet's `url` column, with optional `file` and `sha256` columns. The Mac app also offers **Paste Links**, which accepts raw URLs, Markdown links, supported `wget -O` commands, and labeled vendor blocks with checksums. For the CLI, copy the URL, filename, and checksum from those blocks into the corresponding spreadsheet columns.
