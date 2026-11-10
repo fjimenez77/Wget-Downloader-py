@@ -12,6 +12,8 @@ A bulk download manager with resume capability, SHA256 checksum verification, an
        Bulk Downloader  v2.0  |  Human-like & Resume-capable
 ```
 
+![Wget Downloader for Python CLI and macOS](docs/social-preview.png)
+
 ---
 
 ## Which version do you want?
@@ -186,8 +188,6 @@ On first run, the script checks for dependencies and installs any missing packag
   [6]  Generate download template  (blank .csv)
   [0]  Exit
 ```
-
-![WGET Bulk Downloader — Features and Live Session](docs/banner.png)
 
 ### Capabilities
 
