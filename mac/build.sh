@@ -30,9 +30,9 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleName</key><string>Wget Downloader</string>
 <key>CFBundleExecutable</key><string>Downloader</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>1.6</string>
+<key>CFBundleShortVersionString</key><string>1.6.1</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
-<key>CFBundleVersion</key><string>10</string>
+<key>CFBundleVersion</key><string>11</string>
 <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Felix J. (@fjimenez77) and contributors</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>

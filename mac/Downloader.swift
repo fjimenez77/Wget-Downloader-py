@@ -283,14 +283,45 @@ func responseSize(_ headers: URL) -> Int64? {
     return nil
 }
 
-func historyURL(_ folder: URL) -> URL {
+func legacyHistoryURL(_ folder: URL) -> URL {
     folder.appendingPathComponent("download_manifest.json")
 }
 
-func readHistory(_ folder: URL) throws -> [String: Record] {
-    let url = historyURL(folder)
-    guard FileManager.default.fileExists(atPath: url.path) else { return [:] }
-    return try JSONDecoder().decode([String: Record].self, from: Data(contentsOf: url))
+struct HistoryStore {
+    let directory: URL
+
+    init(directory: URL = URL.applicationSupportDirectory
+        .appendingPathComponent("Wget Downloader", isDirectory: true)
+        .appendingPathComponent("Manifests", isDirectory: true)) {
+        self.directory = directory
+    }
+
+    func manifestURL(for folder: URL) -> URL {
+        let path = folder.resolvingSymlinksInPath().standardizedFileURL.path
+        let key = SHA256.hash(data: Data(path.utf8)).map { String(format: "%02x", $0) }.joined()
+        return directory.appendingPathComponent(key).appendingPathExtension("json")
+    }
+
+    func read(_ folder: URL) throws -> [String: Record] {
+        if let current = try readManifest(manifestURL(for: folder)) { return current }
+        guard let legacy = try readManifest(legacyHistoryURL(folder)) else { return [:] }
+        try write(legacy, for: folder)
+        return legacy
+    }
+
+    func write(_ records: [String: Record], for folder: URL) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
+                                                attributes: [.posixPermissions: 0o700])
+        try JSONEncoder().encode(records).write(to: manifestURL(for: folder), options: .atomic)
+    }
+
+    private func readManifest(_ url: URL) throws -> [String: Record]? {
+        do {
+            return try JSONDecoder().decode([String: Record].self, from: Data(contentsOf: url))
+        } catch CocoaError.fileReadNoSuchFile {
+            return nil
+        }
+    }
 }
 
 func destinationURL(_ folder: URL, _ name: String) -> URL {
@@ -314,7 +345,7 @@ private func existingStatus(_ job: Job, in folder: URL, record: Record?) throws 
     let candidates = directoryValues?.isDirectory == true && directoryValues?.isSymbolicLink == false
         ? [nested, flat] : [flat]
     var found = false
-    for file in candidates where file != historyURL(folder) {
+    for file in candidates where file != legacyHistoryURL(folder) {
         let keys: Set<URLResourceKey> = [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey, .contentModificationDateKey]
         guard let before = try? file.resourceValues(forKeys: keys),
               before.isRegularFile == true, before.isSymbolicLink == false else { continue }
@@ -365,6 +396,7 @@ final class Queue: ObservableObject {
     @Published var history: [String: Record] = [:]
     @Published private(set) var active = Set<UUID>()
     @Published private(set) var pending: [UUID] = []
+    private let historyStore: HistoryStore
     private var sizeLookup: Task<Void, Never>?
     private var processes: [UUID: Process] = [:]
     private var pausing = Set<UUID>()
@@ -372,6 +404,10 @@ final class Queue: ObservableObject {
     private var limit = 2
     private var delayRange = 4.0...15.0
     private var rotateAgent = true
+
+    init(historyStore: HistoryStore = HistoryStore()) {
+        self.historyStore = historyStore
+    }
 
     var running: Bool { !active.isEmpty || !pending.isEmpty }
     var queueLocked: Bool { running || checkingFiles }
@@ -449,7 +485,7 @@ final class Queue: ObservableObject {
     }
 
     func refreshHistory() {
-        do { history = try readHistory(folder) }
+        do { history = try historyStore.read(folder) }
         catch { message = "Could not read download history: \(error.localizedDescription)" }
     }
 
@@ -458,7 +494,7 @@ final class Queue: ObservableObject {
         checkingFiles = true
         defer { checkingFiles = false }
         let selectedFolder = folder
-        let records = (try? readHistory(selectedFolder)) ?? [:]
+        let records = (try? historyStore.read(selectedFolder)) ?? [:]
         for index in jobs.indices {
             let job = jobs[index]
             message = "Checking file \(index + 1) of \(jobs.count)…"
@@ -580,11 +616,11 @@ final class Queue: ObservableObject {
             jobs[index].bytesPerSecond = 0
         }
         func save(_ job: Job, _ status: String, _ size: Int64, _ error: String? = nil) throws {
-            var updated = try readHistory(folder)
+            var updated = try historyStore.read(folder)
             updated[job.name] = Record(url: nil, status: status, source_id: sourceID(job.url), size_bytes: size,
                                        attempts: (updated[job.name]?.attempts ?? 0) + 1, error: error,
                                        completed_at: status == "completed" ? ISO8601DateFormatter().string(from: Date()) : nil)
-            try JSONEncoder().encode(updated).write(to: historyURL(folder), options: .atomic)
+            try historyStore.write(updated, for: folder)
             history = updated
         }
         jobs[index].bytes = 0
@@ -594,7 +630,7 @@ final class Queue: ObservableObject {
         }
         let destination = destinationURL(folder, job.name)
         let legacy: Record?
-        do { legacy = try readHistory(folder)[job.name] }
+        do { legacy = try historyStore.read(folder)[job.name] }
         catch {
             jobs[index].status = "Could not read download history"
             return
@@ -632,7 +668,7 @@ final class Queue: ObservableObject {
                 } else {
                     throw Problem("File already exists · choose a different folder or filename")
                 }
-            } else if !job.hash.isEmpty, fileSize(oldFlat) != nil, oldFlat != historyURL(folder),
+            } else if !job.hash.isEmpty, fileSize(oldFlat) != nil, oldFlat != legacyHistoryURL(folder),
                       (try? manager.destinationOfSymbolicLink(atPath: oldFlat.path)) == nil,
                       try await Task.detached(operation: { try checksum(oldFlat) }).value == job.hash {
                 jobs[index].expectedBytes = fileSize(oldFlat)

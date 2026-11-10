@@ -55,7 +55,7 @@ A native SwiftUI app for Apple Silicon Macs. Same job as the CLI — bulk downlo
 
 ### Install
 
-1. Download **[`Wget-Downloader-1.6-arm64.dmg`](https://github.com/fjimenez77/Wget-Downloader-py/releases/download/v1.6/Wget-Downloader-1.6-arm64.dmg)** from the [latest release](https://github.com/fjimenez77/Wget-Downloader-py/releases/latest).
+1. Download **[`Wget-Downloader-1.6.1-arm64.dmg`](https://github.com/fjimenez77/Wget-Downloader-py/releases/download/v1.6.1/Wget-Downloader-1.6.1-arm64.dmg)** from the [latest release](https://github.com/fjimenez77/Wget-Downloader-py/releases/latest).
 2. Open the disk image and drag **Wget Downloader** onto the **Applications** shortcut.
 3. On first launch macOS refuses to open it, saying Apple cannot check it for malicious software. Open **System Settings → Privacy & Security**, scroll to the bottom, click **Open Anyway**, and confirm. You only do this once.
 
@@ -68,8 +68,8 @@ xattr -d com.apple.quarantine "/Applications/Wget Downloader.app"
 > **Why the warning appears.** This build is ad-hoc signed — not signed with an Apple Developer ID certificate and not notarized by Apple, which needs a paid Apple Developer Program membership. macOS has no way to confirm who built it, so it asks you. Verify the download against its checksum if you prefer:
 >
 > ```
-> shasum -a 256 Wget-Downloader-1.6-arm64.dmg
-> 624ba136901c2ff7c26787d62a11b058585757b875553d0acc2fa39f75349bd0
+> shasum -a 256 Wget-Downloader-1.6.1-arm64.dmg
+> 477a5d19ef07000a6325ef7e2fc0c1b1553ee03e8c7ee3ee10d3a12b2b4ac0fe
 > ```
 
 **Requirements:** an Apple Silicon Mac (M1 or later) running **macOS 13 Ventura or later**. Intel Macs are not supported by this build.
@@ -108,7 +108,7 @@ Pasted text is parsed as data and never passed through a shell. Arbitrary `wget`
 
 ### Automatic folder checking
 
-Choose the download folder **before** importing a spreadsheet. On a successful import the app scans that folder and marks every row it recognises, so a re-run only fetches what is genuinely missing. The scan runs entirely on your Mac — it reads the files on disk and `download_manifest.json`, and contacts nothing.
+Choose the download folder **before** importing a spreadsheet. On a successful import the app scans that folder and marks every row it recognises, so a re-run only fetches what is genuinely missing. The scan runs entirely on your Mac — it reads the files on disk and the app’s local download history.
 
 | Status | What it means |
 | --- | --- |
@@ -131,7 +131,7 @@ The queue runs two downloads at once by default, and **Settings** allows anythin
 
 **How to Use** explains the spreadsheet columns and every supported paste format without leaving the app. **Tools** adds a configurable CSV template generator, a quick start, VPN guidance, and a user-initiated public IP / geolocation and proxy-hosting check that ports the CLI's service chain — detection is approximate. **Settings** persists the randomized delay range and browser user-agent rotation, defaulting to the CLI's 4–15 seconds with rotation enabled.
 
-**History** reads `download_manifest.json` from the selected output folder and shows status, size, attempt count, on-disk state, and the last completion or error. New downloads use the CLI's `output/filename-stem/filename` layout, so a transfer the CLI already completed can be skipped, and a transfer the CLI recorded as failed can be resumed. New manifest rows store a source fingerprint in place of the full URL; older rows written by the CLI remain readable.
+**History** shows status, size, attempt count, on-disk state, and the last completion or error for the selected folder. The Mac app stores a separate manifest for each folder under `~/Library/Application Support/Wget Downloader/Manifests/`. On first access it imports an existing `download_manifest.json` from that folder and leaves the original available to the CLI. New downloads use the CLI's `output/filename-stem/filename` layout, so a transfer the CLI already completed can be skipped, and a transfer the CLI recorded as failed can be resumed. New manifest rows store a source fingerprint in place of the full URL; older rows written by the CLI remain readable through the import.
 
 <details>
 <summary><b>More screenshots</b></summary>
